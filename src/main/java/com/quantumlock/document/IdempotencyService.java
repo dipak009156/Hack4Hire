@@ -49,9 +49,12 @@ public class IdempotencyService {
                                          String idempotencyKey, String endpoint,
                                          String payloadDigest) {
 
+        UUID effectiveCallerId = callerId != null ? callerId :
+                UUID.nameUUIDFromBytes((tenantId.toString() + ":" + endpoint).getBytes(StandardCharsets.UTF_8));
+
         Optional<IdempotencyOperation> existing =
                 idempotencyRepository.findByTenantIdAndCallerIdAndIdempotencyKeyAndEndpoint(
-                        tenantId, callerId, idempotencyKey, endpoint);
+                        tenantId, effectiveCallerId, idempotencyKey, endpoint);
 
         if (existing.isPresent()) {
             return handleExisting(existing.get(), idempotencyKey, payloadDigest);
@@ -61,7 +64,7 @@ public class IdempotencyService {
             IdempotencyOperation newOp = idempotencyRepository.saveAndFlush(
                     IdempotencyOperation.builder()
                             .tenantId(tenantId)
-                            .callerId(callerId)
+                            .callerId(effectiveCallerId)
                             .idempotencyKey(idempotencyKey)
                             .endpoint(endpoint)
                             .payloadDigest(payloadDigest)
@@ -73,7 +76,7 @@ public class IdempotencyService {
         } catch (DataIntegrityViolationException dive) {
             log.info("Concurrent insert race detected for idempotencyKey={}, reading existing record", idempotencyKey);
             IdempotencyOperation raced = idempotencyRepository
-                    .findByTenantIdAndCallerIdAndIdempotencyKeyAndEndpoint(tenantId, callerId, idempotencyKey, endpoint)
+                    .findByTenantIdAndCallerIdAndIdempotencyKeyAndEndpoint(tenantId, effectiveCallerId, idempotencyKey, endpoint)
                     .orElseThrow(() -> new IllegalStateException("Operation must exist after DataIntegrityViolation", dive));
 
             return handleExisting(raced, idempotencyKey, payloadDigest);

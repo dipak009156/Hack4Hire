@@ -37,12 +37,18 @@ public class JwtService {
         Instant now = Instant.now();
         Instant expiry = now.plusMillis(jwtProperties.getExpirationMs());
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(user.getUsername())
                 .claim("tenant", tenantId.toString())
                 .claim("roles", roles)
                 .claim("department", department != null ? department : "")
-                .claim("device_trust", deviceTrustLevel != null ? deviceTrustLevel : "STANDARD")
+                .claim("device_trust", deviceTrustLevel != null ? deviceTrustLevel : "STANDARD");
+
+        if (user instanceof AppUserDetails appUser && appUser.getUserId() != null) {
+            builder.claim("user_id", appUser.getUserId().toString());
+        }
+
+        return builder
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(signingKey, Jwts.SIG.HS256)

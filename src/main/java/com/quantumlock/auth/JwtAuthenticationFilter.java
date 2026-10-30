@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final AppUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -57,8 +58,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             .map(r -> new SimpleGrantedAuthority("ROLE_" + r.toUpperCase()))
                             .collect(Collectors.toList());
 
+            String userIdClaim = claims.get("user_id", String.class);
+            UUID userId = null;
+            if (userIdClaim != null && !userIdClaim.isBlank()) {
+                try {
+                    userId = UUID.fromString(userIdClaim);
+                } catch (IllegalArgumentException ignored) {}
+            }
+            if (userId == null) {
+                try {
+                    AppUserDetails loaded = userDetailsService.loadUserByUsernameAndTenant(username, tenantClaim);
+                    userId = loaded.getUserId();
+                } catch (Exception ignored) {}
+            }
+
             AppUserDetails principal = new AppUserDetails(
-                    null,
+                    userId,
                     tenantId,
                     username,
                     roles,
