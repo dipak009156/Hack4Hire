@@ -35,7 +35,9 @@ public class OutboxRelay {
     @Scheduled(fixedDelayString = "${outbox.relay-interval-ms:5000}")
     @Transactional
     public void relay() {
-        List<OutboxEvent> pending = outboxRepository.findPendingEvents();
+        // FOR UPDATE SKIP LOCKED: allows multiple relay instances to run concurrently
+        // without blocking each other; each pod picks a non-overlapping set of events.
+        List<OutboxEvent> pending = outboxRepository.findPendingEventsForUpdateSkipLocked(100);
         if (pending.isEmpty()) return;
 
         log.debug("Outbox relay: processing {} pending events", pending.size());

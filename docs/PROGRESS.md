@@ -40,3 +40,21 @@ QUANTUM-LOCK is a zero-trust, high-assurance document security platform built wi
   - [x] Flyway migration `V3__audit_chain_and_policy.sql` adding `chain_position`, `actor`, and `policy_id`, `updated_by` columns
   - [x] Shared non-blocking `SecureRandom` replacing `getInstanceStrong()`
   - [x] Complete test suite passing (45/45 tests across all phases)
+
+---
+
+## Phase 3 Hardening Pass (2026-10-30)
+
+Audit of all 7 hardening items:
+
+| # | Item | Status | Action |
+|---|------|--------|--------|
+| 1 | **Audit hash chain** — SHA-256 over `chain_position\|tenantId\|actor\|resource\|action\|outcome\|operationId\|policyVersion\|timestamp\|previousHash`; per-tenant serialization via `SELECT ... FOR UPDATE` on tenant row; verify orders by `chain_position`; `POST /api/v1/audit/verify` returns first inconsistent event; test edits `actor` field and detects tampering | ✅ Already correct | No change |
+| 2 | **Policy table** — `policy_id`, `tenant_id`, `expression`, `version`, `updated_by` present in schema; V3 migration adds `policy_id` + `updated_by` to existing table without editing applied migrations | ✅ Already correct | No change |
+| 3 | **Upload flow** — `OBJECT_STORED` set immediately after successful MinIO `putObject`; `COMMITTED` in separate atomic `REQUIRES_NEW` tx; `RECOVERING` state present in `DocumentState` enum | ✅ Already correct | No change |
+| 4 | **Recovery** — Deletes objects for stale `PENDING` rows; CAS (`compareAndSetState`) prevents failing in-flight uploads; completes commit when ciphertext digest verifies; marks `FAILED` + deletes orphan on mismatch; tenant-safe (filters by `tenantId`) | ✅ Already correct | No change |
+| 5 | **Idempotency** — Unique constraint + `DataIntegrityViolationException` catch returns original result; `Idempotency-Key` is required (400) on upload; parallel-retry test with `CyclicBarrier` and 10 concurrent threads exists | ✅ Already correct | No change |
+| 6 | **Outbox relay** — `OutboxRelay.relay()` was calling `findPendingEvents()` (JPA `@Lock(PESSIMISTIC_WRITE)`) instead of the native `FOR UPDATE SKIP LOCKED` query | ⚠️ **Fixed** | Switched relay to `findPendingEventsForUpdateSkipLocked(100)` |
+| 7 | **SecureRandom** — `EnvelopeEncryptionService` uses a shared `private final SecureRandom secureRandom = new SecureRandom()` instance, not `getInstanceStrong()` per call | ✅ Already correct | No change |
+
+- [x] `mvnw.cmd verify` passes: **45/45 tests, BUILD SUCCESS**
