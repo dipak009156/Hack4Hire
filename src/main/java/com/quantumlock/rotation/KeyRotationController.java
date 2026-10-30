@@ -103,6 +103,24 @@ public class KeyRotationController {
         return ResponseEntity.ok(toResponse(job));
     }
 
+    @GetMapping("/current-kek")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER', 'AUDITOR')")
+    @Operation(summary = "Get current active KEK version")
+    public ResponseEntity<java.util.Map<String, Integer>> getCurrentKek() {
+        return ResponseEntity.ok(java.util.Map.of("currentKekVersion", keyRotationService.getCurrentKekVersion()));
+    }
+
+    @GetMapping("/history")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "List all rotation jobs for tenant")
+    public ResponseEntity<java.util.List<RotationStatusResponse>> getHistory() {
+        return ResponseEntity.ok(
+                keyRotationService.listRotationHistory().stream()
+                        .map(this::toResponse)
+                        .toList()
+        );
+    }
+
     private RotationStatusResponse toResponse(KeyRotation job) {
         return new RotationStatusResponse(
                 job.getId(),

@@ -39,4 +39,15 @@ public class AuditController {
         AuditService.VerificationResult result = auditService.verifyChain(tenantId);
         return ResponseEntity.ok(result);
     }
+
+    @org.springframework.web.bind.annotation.GetMapping("/events")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR', 'USER')")
+    @Operation(summary = "Get audit chain events",
+            description = "Returns chronological list of hash-chained audit events for the caller's tenant.")
+    public ResponseEntity<java.util.List<AuditEvent>> getAuditEvents(
+            @AuthenticationPrincipal AppUserDetails principal) {
+
+        UUID tenantId = TenantContext.requireTenantId();
+        return ResponseEntity.ok(auditService.getEvents(tenantId));
+    }
 }

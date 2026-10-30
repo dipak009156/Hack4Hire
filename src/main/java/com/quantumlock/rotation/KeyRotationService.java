@@ -88,7 +88,7 @@ public class KeyRotationService {
         // Run the rotation synchronously in this transaction scope
         // (for large tenants this would be async/scheduled — sufficient for this implementation)
         runRotation(saved, actorId, actorName);
-        return keyRotationRepository.findById(saved.getId()).orElse(saved);
+        return saved;
     }
 
     // -------------------------------------------------------------------------
@@ -101,6 +101,17 @@ public class KeyRotationService {
         return keyRotationRepository.findByIdAndTenantId(rotationId, tenantId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Rotation job not found: " + rotationId));
+    }
+
+    @Transactional(readOnly = true)
+    public int getCurrentKekVersion() {
+        return kmsService.currentKekVersion();
+    }
+
+    @Transactional(readOnly = true)
+    public List<KeyRotation> listRotationHistory() {
+        UUID tenantId = TenantContext.requireTenantId();
+        return keyRotationRepository.findAllByTenantIdOrderByCreatedAtDesc(tenantId);
     }
 
     // -------------------------------------------------------------------------

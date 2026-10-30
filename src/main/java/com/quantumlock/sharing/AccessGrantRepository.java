@@ -16,6 +16,12 @@ public interface AccessGrantRepository extends JpaRepository<AccessGrant, UUID> 
 
     List<AccessGrant> findAllByDocumentIdAndTenantId(UUID documentId, UUID tenantId);
 
+    List<AccessGrant> findAllByTenantId(UUID tenantId);
+
+    List<AccessGrant> findAllByGranteeIdAndTenantId(UUID granteeId, UUID tenantId);
+
+    List<AccessGrant> findAllByGrantorIdAndTenantId(UUID grantorId, UUID tenantId);
+
     Optional<AccessGrant> findByIdAndTenantId(UUID id, UUID tenantId);
 
     /** Active grants for a given grantee on a document (not revoked, not expired). */

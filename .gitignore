@@ -34,3 +34,6 @@ target/
 *.bak
 .DS_Store
 Thumbs.db
+node_modules/
+frontend/dist/
+frontend/node_modules/

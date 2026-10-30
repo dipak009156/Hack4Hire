@@ -145,6 +145,17 @@ public class DocumentController {
     }
 
     // -------------------------------------------------------------------------
+    // GET /api/v1/documents — List all documents for tenant
+    // -------------------------------------------------------------------------
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'AUDITOR')")
+    @Operation(summary = "List all documents for current tenant")
+    public ResponseEntity<List<DocumentResponse>> listDocuments() {
+        return ResponseEntity.ok(documentService.listDocuments());
+    }
+
+    // -------------------------------------------------------------------------
     // GET /api/v1/documents/{id} — Get document metadata
     // -------------------------------------------------------------------------
 
@@ -153,6 +164,21 @@ public class DocumentController {
     @Operation(summary = "Get document metadata")
     public ResponseEntity<DocumentResponse> getDocument(@PathVariable UUID id) {
         return ResponseEntity.ok(documentService.getDocument(id));
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/v1/documents/{id}/download — Decrypt & download document
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}/download")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @Operation(summary = "Download and decrypt document content",
+               description = "Checks document ownership or active access grant before decrypting.")
+    public ResponseEntity<DownloadResponse> downloadDocument(
+            @PathVariable UUID id,
+            @RequestParam(name = "version", required = false) Integer version,
+            @AuthenticationPrincipal AppUserDetails principal) {
+        return ResponseEntity.ok(documentService.downloadDocument(id, version, principal));
     }
 
     // -------------------------------------------------------------------------

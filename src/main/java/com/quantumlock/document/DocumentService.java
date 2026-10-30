@@ -55,6 +55,12 @@ public class DocumentService {
     private final AuditService auditService;
     private final ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.quantumlock.sharing.AccessGrantRepository accessGrantRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.quantumlock.search.SearchService searchService;
+
     // -------------------------------------------------------------------------
     // Upload a new document (creates document + version 1)
     // -------------------------------------------------------------------------
@@ -126,6 +132,75 @@ public class DocumentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<DocumentResponse> listDocuments() {
+        return documentRepository.findAllForCurrentTenant()
+                .stream()
+                .map(doc -> toDocumentResponse(doc, doc.getCurrentVersion()))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public DownloadResponse downloadDocument(UUID documentId, Integer versionOpt, AppUserDetails principal) {
+        UUID tenantId = TenantContext.requireTenantId();
+        Document doc = documentRepository.findByIdForCurrentTenant(documentId)
+                .orElseThrow(() -> new EntityNotFoundException("Document not found"));
+
+        boolean isOwner = doc.getOwnerId().equals(principal.getUserId());
+        boolean isAdmin = principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isOwner && !isAdmin) {
+            if (accessGrantRepository != null) {
+                var activeGrants = accessGrantRepository.findActiveGrantsForGrantee(
+                        documentId, principal.getUserId(), tenantId, Instant.now());
+                if (activeGrants.isEmpty()) {
+                    throw new org.springframework.security.access.AccessDeniedException(
+                            "No active access grant for document: " + documentId);
+                }
+                var grant = activeGrants.get(0);
+                if (grant.getRemainingDownloads() != null) {
+                    accessGrantRepository.decrementRemainingDownloads(grant.getId());
+                }
+            } else {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Access denied to document: " + documentId);
+            }
+        }
+
+        int version = (versionOpt != null && versionOpt > 0) ? versionOpt : doc.getCurrentVersion();
+        DocumentVersion dv = documentVersionRepository
+                .findByDocumentIdAndTenantIdAndVersion(documentId, tenantId, version)
+                .orElseThrow(() -> new EntityNotFoundException("Document version not found"));
+
+        byte[] ciphertext = objectStoreService.getObject(dv.getObjectKey());
+        byte[] nonce = Base64.getDecoder().decode(dv.getNonce());
+        byte[] wrappedDek = Base64.getDecoder().decode(dv.getWrappedDek());
+
+        byte[] plaintext = encryptionService.decrypt(
+                ciphertext,
+                nonce,
+                wrappedDek,
+                dv.getKekVersion(),
+                dv.getCiphertextDigest(),
+                tenantId,
+                documentId,
+                version
+        );
+
+        auditService.record(tenantId, principal.getUserId(), principal.getUsername(),
+                "DOCUMENT", documentId, "DOWNLOAD", "SUCCESS",
+                "version=" + version);
+
+        return new DownloadResponse(
+                doc.getId(),
+                version,
+                doc.getName(),
+                dv.getContentType(),
+                Base64.getEncoder().encodeToString(plaintext),
+                plaintext.length
+        );
+    }
+
     // -------------------------------------------------------------------------
     // Two-Phase Upload State Machine
     // -------------------------------------------------------------------------
@@ -169,6 +244,16 @@ public class DocumentService {
 
         // Step 5: Atomic commit tx: COMMITTED + parent doc current_version + outbox + audit
         commitVersion(dv, doc, tenantId, ownerId, actorName, version, operationId);
+
+        // Step 6: Blind-index indexing (best effort)
+        try {
+            if (searchService != null) {
+                searchService.indexDocument(doc.getId(), new String(plaintext, java.nio.charset.StandardCharsets.UTF_8), doc.getName());
+            }
+        } catch (Exception e) {
+            log.warn("Blind-index indexing failed for docId={}: {}", doc.getId(), e.getMessage());
+        }
+
         return dv;
     }
 

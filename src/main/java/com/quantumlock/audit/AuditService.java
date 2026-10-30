@@ -141,6 +141,11 @@ public class AuditService {
         return record(tenantId, actorId, actorName, resourceType, resourceId, action, outcome, detail, null, null);
     }
 
+    @Transactional(readOnly = true)
+    public List<AuditEvent> getEvents(UUID tenantId) {
+        return auditEventRepository.findAllByTenantIdOrderByChainPositionAsc(tenantId);
+    }
+
     /**
      * Verifies the audit chain integrity for a tenant, walking from chainPosition 1 onwards.
      * Returns the exact FIRST inconsistent event found, or a valid result if all match.

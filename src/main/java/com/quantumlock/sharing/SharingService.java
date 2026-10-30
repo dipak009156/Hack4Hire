@@ -52,7 +52,7 @@ public class SharingService {
         UUID tenantId = TenantContext.requireTenantId();
 
         // Verify document belongs to this tenant and the principal owns or manages it
-        documentRepository.findByIdForCurrentTenant(documentId)
+        documentRepository.findByIdAndTenantId(documentId, tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Document not found: " + documentId));
 
         AccessGrant grant = AccessGrant.builder()
@@ -115,9 +115,36 @@ public class SharingService {
     // -------------------------------------------------------------------------
 
     @Transactional(readOnly = true)
+    public List<AccessGrantResponse> listAllGrants() {
+        UUID tenantId = TenantContext.requireTenantId();
+        return accessGrantRepository.findAllByTenantId(tenantId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AccessGrantResponse> listGrantsCreatedBy(UUID grantorId) {
+        UUID tenantId = TenantContext.requireTenantId();
+        return accessGrantRepository.findAllByGrantorIdAndTenantId(grantorId, tenantId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AccessGrantResponse> listGrantsSharedWith(UUID granteeId) {
+        UUID tenantId = TenantContext.requireTenantId();
+        return accessGrantRepository.findAllByGranteeIdAndTenantId(granteeId, tenantId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<AccessGrantResponse> listGrants(UUID documentId) {
         UUID tenantId = TenantContext.requireTenantId();
-        documentRepository.findByIdForCurrentTenant(documentId)
+        documentRepository.findByIdAndTenantId(documentId, tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("Document not found: " + documentId));
 
         return accessGrantRepository.findAllByDocumentIdAndTenantId(documentId, tenantId)

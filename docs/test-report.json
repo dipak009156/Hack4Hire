@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-10-30T20:30:00Z",
+  "version": "1.0.0",
+  "totalGuarantees": 15,
+  "passing": 15,
+  "guarantees": [
+    {
+      "id": "Q01",
+      "name": "Envelope Encryption (AES-256-GCM + AESWrap)",
+      "invariant": "I1",
+      "status": "PASS",
+      "description": "Unique DEK generated per document version, wrapped via KMS with KEK versioning; plaintext DEK zeroed immediately."
+    },
+    {
+      "id": "Q02",
+      "name": "Strict Tenant Isolation (Persistence & Memory)",
+      "invariant": "I2",
+      "status": "PASS",
+      "description": "Tenant identity extracted from validated JWT into request-scoped TenantContext; all queries filtered by tenant_id."
+    },
+    {
+      "id": "Q03",
+      "name": "Cryptographic Additional Authenticated Data (AAD) Binding",
+      "invariant": "I1",
+      "status": "PASS",
+      "description": "AAD binds ciphertext cryptographically to tenantId|documentId|version, preventing cross-tenant replay."
+    },
+    {
+      "id": "Q04",
+      "name": "Two-Phase Upload State Machine with Atomic Commit",
+      "invariant": "I3",
+      "status": "PASS",
+      "description": "Upload transitions PENDING -> OBJECT_STORED -> COMMITTED; parent document, outbox, and audit commit atomically."
+    },
+    {
+      "id": "Q05",
+      "name": "Tamper-Evident Audit Hash Chain with Genesis Pointer",
+      "invariant": "I6",
+      "status": "PASS",
+      "description": "Every event computes SHA-256 over chain_position|tenantId|actor|resource|action|outcome|previousHash."
+    },
+    {
+      "id": "Q06",
+      "name": "Per-Tenant Audit Serialization (Pessimistic Locking)",
+      "invariant": "I6",
+      "status": "PASS",
+      "description": "Pessimistic lock on tenant prevents audit chain fork or race condition; chain_position strictly monotonic."
+    },
+    {
+      "id": "Q07",
+      "name": "Audit Verification Endpoint with First-Tampered Detection",
+      "invariant": "I6",
+      "status": "PASS",
+      "description": "POST /api/v1/audit/verify walks chain from genesis and pinpoints the exact first inconsistent event."
+    },
+    {
+      "id": "Q08",
+      "name": "Idempotency via Unique Constraint & Payload Digest",
+      "invariant": "I4",
+      "status": "PASS",
+      "description": "Mandatory Idempotency-Key; concurrent races handled via unique constraint and DataIntegrityViolation catch."
+    },
+    {
+      "id": "Q09",
+      "name": "Reconciliation & Recovery with Compare-and-Set",
+      "invariant": "I3",
+      "status": "PASS",
+      "description": "Stale uploads claimed via compare-and-set to RECOVERING; verified digests committed, corrupted/missing marked FAILED and orphaned MinIO objects deleted."
+    },
+    {
+      "id": "Q10",
+      "name": "Transactional Outbox with FOR UPDATE SKIP LOCKED",
+      "invariant": "I5",
+      "status": "PASS",
+      "description": "Outbox events committed atomically with domain mutations; scheduled relay queries with SKIP LOCKED for concurrent worker safety."
+    },
+    {
+      "id": "Q11",
+      "name": "Zero Plaintext & Key Exposure via In-Memory JWT",
+      "invariant": "I2",
+      "status": "PASS",
+      "description": "JWT tokens kept in memory only (no localStorage/sessionStorage); keys never emitted in API logs or responses."
+    },
+    {
+      "id": "Q12",
+      "name": "Time-Limited and Quota-Enforced Document Sharing",
+      "invariant": "I7",
+      "status": "PASS",
+      "description": "Access grants support expiration timestamp and remaining download counter decremented atomically."
+    },
+    {
+      "id": "Q13",
+      "name": "Resumable Batch Key Encryption Key (KEK) Rotation",
+      "invariant": "I1",
+      "status": "PASS",
+      "description": "Unwraps DEK with old KEK, re-wraps with new target KEK without touching ciphertext, advancing cursor batch-by-batch."
+    },
+    {
+      "id": "Q14",
+      "name": "Optimistic Concurrency Control on Policy Modifications",
+      "invariant": "I8",
+      "status": "PASS",
+      "description": "Policies track version number; concurrent updates detect stale version and return RFC 9457 409 Conflict."
+    },
+    {
+      "id": "Q15",
+      "name": "Encrypted Blind Index Search with Token Intersection",
+      "invariant": "I9",
+      "status": "PASS",
+      "description": "HMAC-SHA256 blind indexing allows exact keyword search with multi-keyword AND intersection without disclosing plaintext terms."
+    }
+  ]
+}
+

@@ -1,0 +1,341 @@
+openapi: 3.0.3
+info:
+  title: QUANTUM-LOCK Zero-Trust Document Security API
+  version: 1.0.0
+  description: High-assurance document security platform with envelope encryption, multi-tenancy, idempotency, and audit trails.
+servers:
+  - url: /api/v1
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate user within a tenant and issue JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, tenant]
+              properties:
+                username: { type: string }
+                password: { type: string }
+                tenant: { type: string }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  tokenType: { type: string }
+                  expiresIn: { type: integer }
+                  tenantId: { type: string }
+                  roles:
+                    type: array
+                    items: { type: string }
+
+  /documents:
+    get:
+      summary: List all documents for the current tenant
+      responses:
+        '200':
+          description: List of documents
+    post:
+      summary: Upload a new document
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, classification, contentType, content]
+              properties:
+                name: { type: string }
+                classification: { type: string, enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED] }
+                contentType: { type: string }
+                content: { type: string, description: Base64-encoded file content }
+      responses:
+        '201':
+          description: Document created
+
+  /documents/{id}:
+    get:
+      summary: Get document metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Document metadata
+
+  /documents/{id}/download:
+    get:
+      summary: Download and decrypt document content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: version
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Decrypted document with contentBase64
+
+  /documents/{id}/versions:
+    get:
+      summary: List all versions of a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of document versions
+    post:
+      summary: Upload a new version of a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, classification, contentType, content]
+              properties:
+                name: { type: string }
+                classification: { type: string }
+                contentType: { type: string }
+                content: { type: string }
+      responses:
+        '201':
+          description: Version uploaded
+
+  /documents/{documentId}/shares:
+    get:
+      summary: List all grants on a document
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of access grants
+    post:
+      summary: Grant document access to another user
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [granteeId]
+              properties:
+                granteeId: { type: string, format: uuid }
+                permissions:
+                  type: array
+                  items: { type: string }
+                purpose: { type: string }
+                expiresAt: { type: string, format: date-time }
+                maxDownloads: { type: integer }
+      responses:
+        '201':
+          description: Grant created
+
+  /documents/{documentId}/shares/{grantId}:
+    delete:
+      summary: Revoke access grant
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: grantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Grant revoked
+
+  /shares:
+    get:
+      summary: Get all access grants for the current tenant
+      responses:
+        '200':
+          description: List of grants
+
+  /shares/my-grants:
+    get:
+      summary: Get grants created by and shared with the current user
+      responses:
+        '200':
+          description: Map of created and received grants
+
+  /search:
+    get:
+      summary: Blind index token search (AND intersection)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of matching documents
+
+  /rotation/start:
+    post:
+      summary: Start KEK rotation job
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceKekVersion, targetKekVersion]
+              properties:
+                sourceKekVersion: { type: integer }
+                targetKekVersion: { type: integer }
+      responses:
+        '201':
+          description: Rotation job started
+
+  /rotation/{id}/status:
+    get:
+      summary: Get rotation job status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Status of rotation job
+
+  /rotation/current-kek:
+    get:
+      summary: Get current active KEK version
+      responses:
+        '200':
+          description: Current KEK version
+
+  /rotation/history:
+    get:
+      summary: List all rotation jobs for tenant
+      responses:
+        '200':
+          description: List of rotation jobs
+
+  /policies:
+    get:
+      summary: List all policies
+      responses:
+        '200':
+          description: List of policies
+    post:
+      summary: Create policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, expression]
+              properties:
+                name: { type: string }
+                expression: { type: string }
+      responses:
+        '201':
+          description: Policy created
+
+  /policies/{id}:
+    get:
+      summary: Get policy by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Policy detail
+    put:
+      summary: Update policy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, expression, version]
+              properties:
+                name: { type: string }
+                expression: { type: string }
+                version: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: Policy updated
+        '409':
+          description: Version conflict
+
+  /audit/verify:
+    post:
+      summary: Verify audit chain integrity
+      responses:
+        '200':
+          description: Chain verification result
+
+  /audit/events:
+    get:
+      summary: Get audit chain events
+      responses:
+        '200':
+          description: Chronological audit events
+
+  /admin/reconcile:
+    post:
+      summary: Reconcile stale uploads and orphaned objects
+      responses:
+        '200':
+          description: Reconciliation results
+
