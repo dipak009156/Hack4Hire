@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { CipherstormReport } from '../api/types';
 import {
   Upload,
+  Download,
   FileCheck2,
   CheckCircle2,
   XCircle,
@@ -118,6 +119,7 @@ const DEFAULT_REPORT: CipherstormReport = {
 export const Cipherstorm: React.FC = () => {
   const [report, setReport] = useState<CipherstormReport>(DEFAULT_REPORT);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,6 +139,16 @@ export const Cipherstorm: React.FC = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleExportReport = () => {
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `cipherstorm-report-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const categories = ['ALL', ...Array.from(new Set(report.checks.map((c) => c.category)))];
@@ -159,8 +171,20 @@ export const Cipherstorm: React.FC = () => {
         </div>
 
         <div className="flex gap-2">
-          <label className="cursor-pointer">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            onClick={handleExportReport}
+            title="Download full JSON verification report"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export JSON
+          </Button>
+
+          <div>
             <input
+              ref={fileInputRef}
               type="file"
               accept=".json"
               className="hidden"
@@ -170,12 +194,12 @@ export const Cipherstorm: React.FC = () => {
               type="button"
               variant="secondary"
               size="md"
-              onClick={() => (document.querySelector('input[type=file]') as HTMLInputElement)?.click()}
+              onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="w-4 h-4 mr-2" />
               Upload Report JSON
             </Button>
-          </label>
+          </div>
         </div>
       </div>
 

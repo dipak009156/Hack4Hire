@@ -182,6 +182,21 @@ public class DocumentController {
     }
 
     // -------------------------------------------------------------------------
+    // GET /api/v1/documents/{id}/encrypted — Download raw ciphertext / envelope
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}/encrypted")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'AUDITOR')")
+    @Operation(summary = "Download raw ciphertext and envelope metadata",
+               description = "Downloads the encrypted ciphertext blob directly from object store along with nonce, wrapped DEK, and KEK version.")
+    public ResponseEntity<EncryptedDownloadResponse> downloadEncrypted(
+            @PathVariable UUID id,
+            @RequestParam(name = "version", required = false) Integer version,
+            @AuthenticationPrincipal AppUserDetails principal) {
+        return ResponseEntity.ok(documentService.downloadEncryptedDocument(id, version, principal));
+    }
+
+    // -------------------------------------------------------------------------
     // GET /api/v1/documents/{id}/versions — List versions
     // -------------------------------------------------------------------------
 

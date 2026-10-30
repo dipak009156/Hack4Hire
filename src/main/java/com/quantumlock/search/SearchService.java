@@ -62,7 +62,7 @@ public class SearchService {
     /**
      * Executes blind-index search with AND intersection across all query tokens.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<DocumentResponse> search(List<String> queryTokens, AppUserDetails principal) {
         UUID tenantId = TenantContext.requireTenantId();
 

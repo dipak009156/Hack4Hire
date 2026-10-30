@@ -86,7 +86,7 @@ public class AuditService {
 
         String canonicalActor = actorName != null ? actorName : (actorId != null ? actorId.toString() : "SYSTEM");
         String canonicalResource = resourceId != null ? resourceId.toString() : (resourceType != null ? resourceType : "null");
-        Instant now = Instant.now();
+        Instant now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
 
         String eventHash = computeEventHash(
                 chainPosition,

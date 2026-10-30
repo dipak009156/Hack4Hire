@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, ApiError } from '../api/client';
-import { DocumentResponse, DocumentVersionResponse, DocumentClassification, DownloadResponse } from '../api/types';
+import { DocumentResponse, DocumentVersionResponse, DocumentClassification, DownloadResponse, EncryptedDownloadResponse } from '../api/types';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { StateBadge, ClassificationBadge } from '../components/common/Badge';
@@ -20,6 +20,8 @@ import {
   Clock,
   AlertCircle,
   FileCheck2,
+  Lock,
+  Binary,
 } from 'lucide-react';
 
 export const Documents: React.FC = () => {
@@ -140,7 +142,8 @@ export const Documents: React.FC = () => {
 
   // Download Handler
   const handleDownload = async (docId: string, version?: number) => {
-    setDownloadingId(docId);
+    const loadingKey = version !== undefined ? `${docId}-v${version}` : docId;
+    setDownloadingId(loadingKey);
     setDownloadError(null);
     try {
       const url = version 
@@ -172,6 +175,45 @@ export const Documents: React.FC = () => {
       }
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const [downloadingEncryptedId, setDownloadingEncryptedId] = useState<string | null>(null);
+
+  // Encrypted Download Handler (raw ciphertext .enc directly from storage)
+  const handleDownloadEncrypted = async (docId: string, version?: number) => {
+    const loadingKey = version !== undefined ? `${docId}-v${version}` : docId;
+    setDownloadingEncryptedId(loadingKey);
+    setDownloadError(null);
+    try {
+      const url = version 
+        ? `/documents/${docId}/encrypted?version=${version}`
+        : `/documents/${docId}/encrypted`;
+
+      const res = await apiRequest<EncryptedDownloadResponse>(url);
+
+      const byteCharacters = atob(res.ciphertextBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/octet-stream' });
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = res.name || 'document.enc';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setDownloadError(err.problem.detail || 'Encrypted download access denied');
+      } else {
+        setDownloadError('Failed to download encrypted ciphertext');
+      }
+    } finally {
+      setDownloadingEncryptedId(null);
     }
   };
 
@@ -263,9 +305,19 @@ export const Documents: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           isLoading={downloadingId === doc.id}
-                          title="Decrypt & Download"
+                          title="Decrypt & Download Plaintext"
                         >
                           <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => handleDownloadEncrypted(doc.id)}
+                          variant="ghost"
+                          size="sm"
+                          isLoading={downloadingEncryptedId === doc.id}
+                          title="Download Raw Ciphertext (.enc)"
+                          className="text-terracotta hover:text-terracotta/80"
+                        >
+                          <Lock className="w-4 h-4" />
                         </Button>
                         <Button
                           onClick={() => setSelectedDoc(doc)}
@@ -460,28 +512,43 @@ export const Documents: React.FC = () => {
             </Card>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => {
-                  resetForm();
-                  setIsNewVersionOpen(true);
-                }}
-                variant="primary"
-                size="sm"
-                className="flex-1"
-              >
-                <Upload className="w-4 h-4 mr-1.5" />
-                Upload New Version
-              </Button>
-              <Button
-                onClick={() => handleDownload(selectedDoc.id, selectedDoc.currentVersion)}
-                variant="secondary"
-                size="sm"
-                isLoading={downloadingId === selectedDoc.id}
-              >
-                <Download className="w-4 h-4 mr-1.5" />
-                Download
-              </Button>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    resetForm();
+                    setIsNewVersionOpen(true);
+                  }}
+                  variant="primary"
+                  size="sm"
+                  className="flex-1"
+                >
+                  <Upload className="w-4 h-4 mr-1.5" />
+                  Upload New Version
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={() => handleDownload(selectedDoc.id, selectedDoc.currentVersion)}
+                  variant="secondary"
+                  size="sm"
+                  isLoading={downloadingId === `${selectedDoc.id}-v${selectedDoc.currentVersion}` || downloadingId === selectedDoc.id}
+                  title="Decrypt with KMS DEK & download plaintext"
+                >
+                  <Download className="w-4 h-4 mr-1.5 text-olive" />
+                  Decrypt
+                </Button>
+                <Button
+                  onClick={() => handleDownloadEncrypted(selectedDoc.id, selectedDoc.currentVersion)}
+                  variant="secondary"
+                  size="sm"
+                  isLoading={downloadingEncryptedId === `${selectedDoc.id}-v${selectedDoc.currentVersion}` || downloadingEncryptedId === selectedDoc.id}
+                  title="Download raw AES-256-GCM ciphertext (.enc) from storage"
+                >
+                  <Lock className="w-4 h-4 mr-1.5 text-terracotta" />
+                  Raw .enc
+                </Button>
+              </div>
             </div>
 
             {/* Versions List */}
@@ -504,16 +571,30 @@ export const Documents: React.FC = () => {
                           <span className="font-mono font-bold text-sm text-brown">v{ver.version}</span>
                           <StateBadge state={ver.state} />
                         </div>
-                        <Button
-                          onClick={() => handleDownload(selectedDoc.id, ver.version)}
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs"
-                          isLoading={downloadingId === selectedDoc.id}
-                        >
-                          <Download className="w-3.5 h-3.5 mr-1" />
-                          Download
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            onClick={() => handleDownload(selectedDoc.id, ver.version)}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            isLoading={downloadingId === `${selectedDoc.id}-v${ver.version}`}
+                            title="Decrypt & Download"
+                          >
+                            <Download className="w-3.5 h-3.5 mr-1 text-olive" />
+                            Decrypt
+                          </Button>
+                          <Button
+                            onClick={() => handleDownloadEncrypted(selectedDoc.id, ver.version)}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-terracotta hover:text-terracotta/80"
+                            isLoading={downloadingEncryptedId === `${selectedDoc.id}-v${ver.version}`}
+                            title="Download Raw Ciphertext (.enc)"
+                          >
+                            <Lock className="w-3.5 h-3.5 mr-1" />
+                            .enc
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs text-brown/70 pt-1 font-mono">

@@ -7,14 +7,70 @@ import { Button } from '../components/common/Button';
 import { ClassificationBadge } from '../components/common/Badge';
 import { Skeleton } from '../components/common/Skeleton';
 import { EmptyState } from '../components/common/EmptyState';
-import { Search as SearchIcon, X, Info, FileText, Download } from 'lucide-react';
+import { Search as SearchIcon, X, Info, FileText, Download, Lock, AlertCircle } from 'lucide-react';
+import { DownloadResponse, EncryptedDownloadResponse } from '../api/types';
 
 export const Search: React.FC = () => {
   const [tokenInput, setTokenInput] = useState('');
-  const [tokens, setTokens] = useState<string[]>(['financial', 'report']);
-  const [queryTrigger, setQueryTrigger] = useState<string[]>(['financial', 'report']);
+  const [tokens, setTokens] = useState<string[]>(['quantum']);
+  const [queryTrigger, setQueryTrigger] = useState<string[]>(['quantum']);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingEncryptedId, setDownloadingEncryptedId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const queryString = queryTrigger.join(' ');
+
+  const handleDownload = async (docId: string) => {
+    setDownloadingId(docId);
+    setDownloadError(null);
+    try {
+      const res = await apiRequest<DownloadResponse>(`/documents/${docId}/download`);
+      const byteCharacters = atob(res.contentBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: res.contentType });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = res.name || 'document';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e: unknown) {
+      console.error(e);
+      setDownloadError(e instanceof Error ? e.message : 'Failed to download decrypted document');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadEncrypted = async (docId: string) => {
+    setDownloadingEncryptedId(docId);
+    setDownloadError(null);
+    try {
+      const res = await apiRequest<EncryptedDownloadResponse>(`/documents/${docId}/encrypted`);
+      const byteCharacters = atob(res.ciphertextBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/octet-stream' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = res.name || 'document.enc';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e: unknown) {
+      console.error(e);
+      setDownloadError(e instanceof Error ? e.message : 'Failed to download raw ciphertext');
+    } finally {
+      setDownloadingEncryptedId(null);
+    }
+  };
 
   const { data: results, isLoading, isFetching } = useQuery({
     queryKey: ['blind-search', queryString],
@@ -77,6 +133,19 @@ export const Search: React.FC = () => {
           Plaintext search terms are converted to HMAC-SHA256 digests in memory before querying the blind index.
         </div>
       </div>
+
+      {/* Download Error Banner */}
+      {downloadError && (
+        <div className="p-4 rounded-xl bg-brick/10 border border-brick/30 text-brick text-sm flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{downloadError}</span>
+          </div>
+          <button onClick={() => setDownloadError(null)} className="text-brick font-bold text-xs underline">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Search Input Box & Keyword Chips */}
       <Card className="space-y-4">
@@ -195,23 +264,29 @@ export const Search: React.FC = () => {
                       {new Date(doc.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <Button
-                        onClick={async () => {
-                          const res = await apiRequest<{ contentBase64: string; name: string; contentType: string }>(
-                            `/documents/${doc.id}/download`
-                          );
-                          const blob = new Blob([Uint8Array.from(atob(res.contentBase64), c => c.charCodeAt(0))], { type: res.contentType });
-                          const link = document.createElement('a');
-                          link.href = URL.createObjectURL(blob);
-                          link.download = res.name;
-                          link.click();
-                        }}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        <Download className="w-4 h-4 mr-1.5" />
-                        Download
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          onClick={() => handleDownload(doc.id)}
+                          variant="ghost"
+                          size="sm"
+                          isLoading={downloadingId === doc.id}
+                          title="Decrypt & Download Plaintext"
+                        >
+                          <Download className="w-4 h-4 mr-1 text-olive" />
+                          Decrypt
+                        </Button>
+                        <Button
+                          onClick={() => handleDownloadEncrypted(doc.id)}
+                          variant="ghost"
+                          size="sm"
+                          isLoading={downloadingEncryptedId === doc.id}
+                          title="Download Raw Ciphertext (.enc)"
+                          className="text-terracotta hover:text-terracotta/80"
+                        >
+                          <Lock className="w-4 h-4 mr-1" />
+                          .enc
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

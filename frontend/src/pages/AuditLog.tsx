@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Hash,
+  Download,
 } from 'lucide-react';
 
 export const AuditLog: React.FC = () => {
@@ -24,6 +25,17 @@ export const AuditLog: React.FC = () => {
     queryKey: ['audit-events'],
     queryFn: () => apiRequest<AuditEvent[]>('/audit/events'),
   });
+
+  const handleExportAuditTrail = () => {
+    if (!events || events.length === 0) return;
+    const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `quantumlock-audit-chain-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Verify Chain Mutation
   const verifyMutation = useMutation({
@@ -50,7 +62,7 @@ export const AuditLog: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => refetch()}
             variant="secondary"
@@ -58,6 +70,17 @@ export const AuditLog: React.FC = () => {
           >
             <RefreshCw className="w-4 h-4 mr-1.5" />
             Refresh
+          </Button>
+
+          <Button
+            onClick={handleExportAuditTrail}
+            variant="secondary"
+            size="md"
+            disabled={!events || events.length === 0}
+            title="Export full cryptographic ledger as JSON"
+          >
+            <Download className="w-4 h-4 mr-1.5" />
+            Export JSON
           </Button>
 
           <Button

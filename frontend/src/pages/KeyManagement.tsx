@@ -6,6 +6,7 @@ import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Dialog } from '../components/common/Dialog';
 import { Skeleton } from '../components/common/Skeleton';
+import { useAuth } from '../context/AuthContext';
 import { generateIdempotencyKey } from '../utils/idempotency';
 import {
   KeyRound,
@@ -19,6 +20,8 @@ import {
 
 export const KeyManagement: React.FC = () => {
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('ADMIN');
 
   const [isRotateModalOpen, setIsRotateModalOpen] = useState(false);
   const [targetKekVersion, setTargetKekVersion] = useState(2);
@@ -36,6 +39,7 @@ export const KeyManagement: React.FC = () => {
   const { data: history, isLoading } = useQuery({
     queryKey: ['rotation-history'],
     queryFn: () => apiRequest<KeyRotationResponse[]>('/rotation/history'),
+    enabled: isAdmin,
   });
 
   // 3. Poll active job status if running
@@ -98,19 +102,25 @@ export const KeyManagement: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          onClick={() => {
-            setRotateError(null);
-            setTargetKekVersion((currentKek?.currentKekVersion || 1) + 1);
-            setIdempotencyKey(generateIdempotencyKey('rotate-kek'));
-            setIsRotateModalOpen(true);
-          }}
-          variant="primary"
-          size="md"
-        >
-          <RotateCw className="w-4 h-4 mr-2" />
-          Trigger KEK Rotation
-        </Button>
+        {isAdmin ? (
+          <Button
+            onClick={() => {
+              setRotateError(null);
+              setTargetKekVersion((currentKek?.currentKekVersion || 1) + 1);
+              setIdempotencyKey(generateIdempotencyKey('rotate-kek'));
+              setIsRotateModalOpen(true);
+            }}
+            variant="primary"
+            size="md"
+          >
+            <RotateCw className="w-4 h-4 mr-2" />
+            Trigger KEK Rotation
+          </Button>
+        ) : (
+          <div className="text-xs text-brown/60 px-3 py-1.5 rounded-lg bg-sand/30 font-mono">
+            Role: Non-Admin (View Only)
+          </div>
+        )}
       </div>
 
       {/* Top Status Cards */}

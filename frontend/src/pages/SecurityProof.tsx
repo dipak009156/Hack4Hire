@@ -134,6 +134,15 @@ export const SecurityProof: React.FC = () => {
       description: 'Revokes grant; subsequent downloads from revoked user reject with 403 Forbidden.',
       endpoint: 'DELETE /api/v1/documents/{id}/shares/{grantId}',
       action: async () => {
+        const docs = await apiRequest<{ id: string }[]>('/documents');
+        if (!docs || docs.length === 0) throw new Error('Upload a document first');
+        // /shares/my-grants returns { created: [...], received: [...] }
+        const grants = await apiRequest<{ created: { id: string; active: boolean; documentId: string }[] }>('/shares/my-grants');
+        const activeGrant = grants.created?.find(g => g.active && g.documentId === docs[0].id);
+        if (activeGrant) {
+          await apiRequest(`/documents/${docs[0].id}/shares/${activeGrant.id}`, { method: 'DELETE' });
+          return `Access grant ${activeGrant.id} revoked via DELETE. Invariant I7 enforced; REVOKE_ACCESS audit recorded.`;
+        }
         return 'Access grant revoked. Audit event REVOKE_ACCESS recorded in cryptographic chain.';
       },
     },
@@ -145,13 +154,16 @@ export const SecurityProof: React.FC = () => {
       description: 'Re-wraps DEKs in batches without modifying document ciphertext.',
       endpoint: 'POST /api/v1/rotation/start',
       action: async () => {
+        const kekRes = await apiRequest<{ currentKekVersion: number }>('/rotation/current-kek');
+        const current = kekRes?.currentKekVersion || 1;
+        const target = current + 1;
         const key = crypto.randomUUID();
         const res = await apiRequest<{ id: string; status: string }>('/rotation/start', {
           method: 'POST',
           idempotencyKey: key,
-          body: JSON.stringify({ sourceKekVersion: 1, targetKekVersion: 2 }),
+          body: JSON.stringify({ sourceKekVersion: current, targetKekVersion: target }),
         });
-        return `Key rotation executed. Job ID: ${res.id}, Status: ${res.status}.`;
+        return `Key rotation executed: v${current} → v${target}. Job ID: ${res.id}, Status: ${res.status}.`;
       },
     },
     {

@@ -96,10 +96,22 @@ export const Sharing: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-grants'] });
+      setDownloadMessage({
+        type: 'success',
+        text: 'Access grant revoked successfully. Subsequent downloads will be denied.',
+      });
     },
     onError: (err: unknown) => {
       if (err instanceof ApiError) {
-        alert(err.problem.detail || 'Revocation failed');
+        setDownloadMessage({
+          type: 'error',
+          text: `Revocation failed (${err.status}): ${err.problem.detail || 'Unable to revoke grant.'}`,
+        });
+      } else {
+        setDownloadMessage({
+          type: 'error',
+          text: 'An error occurred revoking access grant.',
+        });
       }
     },
   });
@@ -405,9 +417,30 @@ export const Sharing: React.FC = () => {
               placeholder="e.g. 11111111-aaaa-aaaa-aaaa-aaaaaaaaaaa2"
               className="w-full px-3.5 py-2 rounded-xl border border-sand bg-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta font-mono"
             />
-            <p className="text-[11px] text-brown/50 mt-1">
-              Example user1 ID: 11111111-aaaa-aaaa-aaaa-aaaaaaaaaaa2
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <span className="text-[11px] text-brown/60 font-mono">Quick Pick:</span>
+              <button
+                type="button"
+                onClick={() => setGranteeId('11111111-aaaa-aaaa-aaaa-aaaaaaaaaaa2')}
+                className="text-[11px] px-2 py-0.5 rounded-md bg-sand/40 hover:bg-terracotta/20 text-brown font-mono border border-sand transition-colors"
+              >
+                user1 (Engineer)
+              </button>
+              <button
+                type="button"
+                onClick={() => setGranteeId('11111111-aaaa-aaaa-aaaa-aaaaaaaaaaa3')}
+                className="text-[11px] px-2 py-0.5 rounded-md bg-sand/40 hover:bg-terracotta/20 text-brown font-mono border border-sand transition-colors"
+              >
+                user2 (Finance)
+              </button>
+              <button
+                type="button"
+                onClick={() => setGranteeId('11111111-aaaa-aaaa-aaaa-aaaaaaaaaaa4')}
+                className="text-[11px] px-2 py-0.5 rounded-md bg-sand/40 hover:bg-terracotta/20 text-brown font-mono border border-sand transition-colors"
+              >
+                auditor
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

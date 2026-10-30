@@ -201,6 +201,37 @@ public class DocumentService {
         );
     }
 
+    @Transactional
+    public EncryptedDownloadResponse downloadEncryptedDocument(UUID documentId, Integer versionOpt, AppUserDetails principal) {
+        UUID tenantId = TenantContext.requireTenantId();
+        Document doc = documentRepository.findByIdForCurrentTenant(documentId)
+                .orElseThrow(() -> new EntityNotFoundException("Document not found"));
+
+        int version = (versionOpt != null && versionOpt > 0) ? versionOpt : doc.getCurrentVersion();
+        DocumentVersion dv = documentVersionRepository
+                .findByDocumentIdAndTenantIdAndVersion(documentId, tenantId, version)
+                .orElseThrow(() -> new EntityNotFoundException("Document version not found"));
+
+        byte[] ciphertext = objectStoreService.getObject(dv.getObjectKey());
+
+        auditService.record(tenantId, principal.getUserId(), principal.getUsername(),
+                "DOCUMENT", documentId, "DOWNLOAD_ENCRYPTED", "SUCCESS",
+                "version=" + version);
+
+        return new EncryptedDownloadResponse(
+                doc.getId(),
+                version,
+                doc.getName() + ".enc",
+                "application/octet-stream",
+                Base64.getEncoder().encodeToString(ciphertext),
+                dv.getNonce(),
+                dv.getWrappedDek(),
+                dv.getKekVersion(),
+                dv.getCiphertextDigest(),
+                ciphertext.length
+        );
+    }
+
     // -------------------------------------------------------------------------
     // Two-Phase Upload State Machine
     // -------------------------------------------------------------------------

@@ -195,7 +195,9 @@ export const Dashboard: React.FC = () => {
               className={`w-9 h-9 rounded-xl flex items-center justify-center ${
                 auditResult?.valid
                   ? 'bg-olive/15 text-olive'
-                  : 'bg-brick/15 text-brick'
+                  : auditResult && !auditResult.valid
+                  ? 'bg-brick/15 text-brick'
+                  : 'bg-sand/30 text-brown/50'
               }`}
             >
               {auditResult?.valid ? (
@@ -211,10 +213,14 @@ export const Dashboard: React.FC = () => {
             ) : (
               <div
                 className={`text-2xl font-bold font-fraunces ${
-                  auditResult?.valid ? 'text-olive' : 'text-brick'
+                  auditResult?.valid
+                    ? 'text-olive'
+                    : auditResult && !auditResult.valid
+                    ? 'text-brick'
+                    : 'text-brown/60'
                 }`}
               >
-                {auditResult?.valid ? 'VERIFIED' : 'TAMPERED'}
+                {auditResult?.valid ? 'VERIFIED' : auditResult && !auditResult.valid ? 'TAMPERED' : 'UNVERIFIED'}
               </div>
             )}
             <p className="text-xs text-brown/60 mt-1 flex items-center gap-1">

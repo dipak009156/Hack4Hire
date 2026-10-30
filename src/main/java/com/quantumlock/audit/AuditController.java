@@ -29,7 +29,7 @@ public class AuditController {
     private final AuditService auditService;
 
     @PostMapping("/verify")
-    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR', 'USER')")
     @Operation(summary = "Verify audit chain integrity",
             description = "Walks the append-only hash chain from genesis and reports whether it is intact or the first inconsistent event found.")
     public ResponseEntity<AuditService.VerificationResult> verifyAuditChain(

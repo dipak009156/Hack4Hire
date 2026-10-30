@@ -18,7 +18,8 @@ export interface LoginResponse {
   accessToken: string;
   tokenType: string;
   expiresIn: number;
-  tenantId: string;
+  tenantId?: string;
+  tenant?: string;
   roles: string[];
 }
 
@@ -56,6 +57,19 @@ export interface DownloadResponse {
   name: string;
   contentType: string;
   contentBase64: string;
+  sizeBytes: number;
+}
+
+export interface EncryptedDownloadResponse {
+  documentId: string;
+  version: number;
+  name: string;
+  contentType: string;
+  ciphertextBase64: string;
+  nonce: string;
+  wrappedDek: string;
+  kekVersion: number;
+  ciphertextDigest: string;
   sizeBytes: number;
 }
 

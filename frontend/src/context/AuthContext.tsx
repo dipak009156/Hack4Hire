@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession({
       token: data.accessToken,
       username: payload.sub || 'User',
-      tenantId: payload.tenant || data.tenantId,
+      tenantId: payload.tenant || data.tenant || data.tenantId || '',
       roles: payload.roles || data.roles || ['USER'],
       department: payload.department,
       deviceTrust: payload.device_trust || 'STANDARD',

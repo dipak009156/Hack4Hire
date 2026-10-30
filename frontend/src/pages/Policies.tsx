@@ -6,6 +6,7 @@ import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Dialog } from '../components/common/Dialog';
 import { Skeleton } from '../components/common/Skeleton';
+import { useAuth } from '../context/AuthContext';
 import {
   FileCode2,
   Edit,
@@ -19,6 +20,8 @@ import {
 
 export const Policies: React.FC = () => {
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('ADMIN');
 
   const [editingPolicy, setEditingPolicy] = useState<PolicyDto | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -131,17 +134,19 @@ export const Policies: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          onClick={() => {
-            resetForm();
-            setIsCreateOpen(true);
-          }}
-          variant="primary"
-          size="md"
-        >
-          <Plus className="w-4 h-4 mr-1.5" />
-          Create Policy
-        </Button>
+        {isAdmin && (
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsCreateOpen(true);
+            }}
+            variant="primary"
+            size="md"
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Create Policy
+          </Button>
+        )}
       </div>
 
       {/* Policies List */}
@@ -188,15 +193,17 @@ export const Policies: React.FC = () => {
                   <span>Updated by: <strong>{policy.updatedBy}</strong></span>
                 </div>
 
-                <Button
-                  onClick={() => handleOpenEdit(policy)}
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                >
-                  <Edit className="w-3.5 h-3.5 mr-1" />
-                  Edit Expression
-                </Button>
+                {isAdmin && (
+                  <Button
+                    onClick={() => handleOpenEdit(policy)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                  >
+                    <Edit className="w-3.5 h-3.5 mr-1" />
+                    Edit Expression
+                  </Button>
+                )}
               </div>
             </Card>
           ))

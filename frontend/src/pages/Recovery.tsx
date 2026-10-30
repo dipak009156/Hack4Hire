@@ -4,6 +4,7 @@ import { apiRequest } from '../api/client';
 import { ReconcileResult } from '../api/types';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
+import { useAuth } from '../context/AuthContext';
 import {
   RotateCcw,
   CheckCircle2,
@@ -16,6 +17,8 @@ import {
 } from 'lucide-react';
 
 export const Recovery: React.FC = () => {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('ADMIN');
   const [lastResult, setLastResult] = useState<ReconcileResult | null>(null);
 
   const reconcileMutation = useMutation({
@@ -40,15 +43,21 @@ export const Recovery: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          onClick={() => reconcileMutation.mutate()}
-          variant="primary"
-          size="md"
-          isLoading={reconcileMutation.isPending}
-        >
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Reconcile Stale Uploads
-        </Button>
+        {isAdmin ? (
+          <Button
+            onClick={() => reconcileMutation.mutate()}
+            variant="primary"
+            size="md"
+            isLoading={reconcileMutation.isPending}
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Reconcile Stale Uploads
+          </Button>
+        ) : (
+          <div className="text-xs text-brown/60 px-3 py-1.5 rounded-lg bg-sand/30 font-mono">
+            ADMIN role required to reconcile
+          </div>
+        )}
       </div>
 
       {/* Result Cards */}
