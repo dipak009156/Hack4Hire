@@ -5,7 +5,7 @@ spring:
   application:
     name: quantum-lock
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/quantumlock}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/quantumlock?options=-c%20timezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:qluser}
     password: ${SPRING_DATASOURCE_PASSWORD:qlpass}
     driver-class-name: org.postgresql.Driver
