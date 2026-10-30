@@ -44,6 +44,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String tenantClaim = claims.get("tenant", String.class);
             UUID tenantId = UUID.fromString(tenantClaim);
 
+            String uidClaim = claims.get("uid", String.class);
+            UUID userId = uidClaim != null ? UUID.fromString(uidClaim) : null;
+
             @SuppressWarnings("unchecked")
             List<String> roles = claims.get("roles", List.class);
             String department = claims.get("department", String.class);
@@ -58,7 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             .collect(Collectors.toList());
 
             AppUserDetails principal = new AppUserDetails(
-                    null,
+                    userId,
                     tenantId,
                     username,
                     roles,

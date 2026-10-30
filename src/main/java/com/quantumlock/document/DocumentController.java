@@ -1,7 +1,13 @@
 package com.quantumlock.document;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quantumlock.audit.AuditService;
 import com.quantumlock.auth.AppUserDetails;
+import com.quantumlock.common.TenantContext;
+import com.quantumlock.crypto.EnvelopeEncryptionService;
+import com.quantumlock.search.SearchService;
+import com.quantumlock.sharing.AccessGrant;
+import com.quantumlock.sharing.AccessGrantRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -14,25 +20,21 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
 /**
  * Document management REST controller.
- *
- * <p>Endpoints:
- * <ul>
- *   <li>{@code POST /api/v1/documents} — upload new document (Idempotency-Key required)</li>
- *   <li>{@code POST /api/v1/documents/{id}/versions} — upload new version (Idempotency-Key required)</li>
- *   <li>{@code GET  /api/v1/documents/{id}} — get document metadata</li>
- *   <li>{@code GET  /api/v1/documents/{id}/versions} — list all versions</li>
- * </ul>
  */
 @RestController
 @RequestMapping("/api/v1/documents")
 @RequiredArgsConstructor
-@Tag(name = "Documents", description = "Document upload and retrieval")
+@Tag(name = "Documents", description = "Document upload, retrieval, and download")
 public class DocumentController {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentController.class);
@@ -41,13 +43,20 @@ public class DocumentController {
     private final DocumentService documentService;
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
+    private final SearchService searchService;
+    private final DocumentRepository documentRepository;
+    private final DocumentVersionRepository documentVersionRepository;
+    private final AccessGrantRepository accessGrantRepository;
+    private final EnvelopeEncryptionService encryptionService;
+    private final ObjectStoreService objectStoreService;
+    private final AuditService auditService;
 
     // -------------------------------------------------------------------------
     // POST /api/v1/documents — Upload new document
     // -------------------------------------------------------------------------
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'MEMBER')")
     @Operation(summary = "Upload a new document", description = "Encrypts and stores a new document. Idempotency-Key header is mandatory.")
     public ResponseEntity<DocumentResponse> uploadDocument(
             @Valid @RequestBody UploadDocumentRequest request,
@@ -64,7 +73,6 @@ public class DocumentController {
                 idempotencyKey, endpoint, payloadDigest);
 
         if (idempResult.alreadyProcessed()) {
-            // If already processed, wait or return completed result
             var completedOp = idempotencyService.awaitCompletion(idempResult.operation().getId(), 3000);
             if (completedOp.isPresent() && "COMPLETED".equals(completedOp.get().getState()) && completedOp.get().getResponseBody() != null) {
                 try {
@@ -79,6 +87,11 @@ public class DocumentController {
 
         try {
             DocumentResponse response = documentService.uploadNewDocument(request, principal, idempResult.operation().getId());
+
+            if (request.keywords() != null && !request.keywords().isEmpty()) {
+                searchService.indexKeywords(principal.getTenantId(), response.id(), request.keywords());
+            }
+
             try {
                 String responseBody = objectMapper.writeValueAsString(response);
                 idempotencyService.complete(idempResult.operation().getId(), responseBody, HttpStatus.CREATED.value());
@@ -98,7 +111,7 @@ public class DocumentController {
     // -------------------------------------------------------------------------
 
     @PostMapping("/{id}/versions")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'MEMBER')")
     @Operation(summary = "Upload a new document version", description = "Uploads a new encrypted version. Idempotency-Key header is mandatory.")
     public ResponseEntity<DocumentResponse> uploadVersion(
             @PathVariable UUID id,
@@ -149,7 +162,7 @@ public class DocumentController {
     // -------------------------------------------------------------------------
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'AUDITOR')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'AUDITOR', 'MEMBER')")
     @Operation(summary = "Get document metadata")
     public ResponseEntity<DocumentResponse> getDocument(@PathVariable UUID id) {
         return ResponseEntity.ok(documentService.getDocument(id));
@@ -160,10 +173,87 @@ public class DocumentController {
     // -------------------------------------------------------------------------
 
     @GetMapping("/{id}/versions")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'AUDITOR')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'AUDITOR', 'MEMBER')")
     @Operation(summary = "List all versions of a document")
     public ResponseEntity<List<DocumentVersionResponse>> getVersions(@PathVariable UUID id) {
         return ResponseEntity.ok(documentService.getVersions(id));
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/v1/documents/{id}/download — Decrypt & Download Document
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/{id}/download")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Download and decrypt document content",
+               description = "Enforces linearized revocation (HTTP 410) and download quotas before unwrapping DEK and decrypting ciphertext.")
+    public ResponseEntity<String> downloadDocument(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal AppUserDetails principal) {
+
+        UUID tenantId = TenantContext.requireTenantId();
+        Document doc = documentRepository.findByIdForCurrentTenant(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
+
+        boolean isOwner = doc.getOwnerId() != null && doc.getOwnerId().equals(principal.getUserId());
+        boolean isAdmin = principal.getAuthorities() != null && principal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isOwner && !isAdmin) {
+            List<AccessGrant> grants = accessGrantRepository
+                    .findAllByDocumentIdAndGranteeIdAndTenantIdOrderByCreatedAtDesc(id, principal.getUserId(), tenantId);
+
+            if (grants.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: No grant found");
+            }
+
+            AccessGrant grant = grants.get(0);
+            if (grant.getRevokedAt() != null) {
+                throw new ResponseStatusException(HttpStatus.GONE, "Access grant has been revoked");
+            }
+            if (grant.getExpiresAt() != null && grant.getExpiresAt().isBefore(Instant.now())) {
+                throw new ResponseStatusException(HttpStatus.GONE, "Access grant has expired");
+            }
+            if (grant.getRemainingDownloads() != null) {
+                if (grant.getRemainingDownloads() <= 0) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Download quota exceeded");
+                }
+                grant.setRemainingDownloads(grant.getRemainingDownloads() - 1);
+                accessGrantRepository.save(grant);
+            }
+        }
+
+        DocumentVersion version = documentVersionRepository
+                .findByDocumentIdAndTenantIdAndVersion(id, tenantId, doc.getCurrentVersion())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document version not found"));
+
+        byte[] ciphertext = objectStoreService.getObject(version.getObjectKey());
+        byte[] nonce = Base64.getDecoder().decode(version.getNonce());
+        byte[] wrappedDekBytes = Base64.getDecoder().decode(version.getWrappedDek());
+
+        byte[] plaintext = encryptionService.decrypt(
+                ciphertext,
+                nonce,
+                wrappedDekBytes,
+                version.getKekVersion(),
+                version.getCiphertextDigest(),
+                tenantId,
+                id,
+                version.getVersion()
+        );
+
+        auditService.record(
+                tenantId,
+                principal.getUserId(),
+                principal.getUsername(),
+                "DOCUMENT",
+                id,
+                "DOWNLOAD",
+                "SUCCESS",
+                "version=" + version.getVersion()
+        );
+
+        return ResponseEntity.ok(new String(plaintext, StandardCharsets.UTF_8));
     }
 
     private void requireIdempotencyKey(String idempotencyKey) {

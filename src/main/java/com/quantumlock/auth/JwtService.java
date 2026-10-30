@@ -37,7 +37,7 @@ public class JwtService {
         Instant now = Instant.now();
         Instant expiry = now.plusMillis(jwtProperties.getExpirationMs());
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(user.getUsername())
                 .claim("tenant", tenantId.toString())
                 .claim("roles", roles)
@@ -45,8 +45,13 @@ public class JwtService {
                 .claim("device_trust", deviceTrustLevel != null ? deviceTrustLevel : "STANDARD")
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(signingKey, Jwts.SIG.HS256)
-                .compact();
+                .signWith(signingKey, Jwts.SIG.HS256);
+
+        if (user instanceof AppUserDetails aud && aud.getUserId() != null) {
+            builder.claim("uid", aud.getUserId().toString());
+        }
+
+        return builder.compact();
     }
 
     public Claims validateToken(String token) {

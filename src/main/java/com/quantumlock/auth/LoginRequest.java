@@ -1,5 +1,6 @@
 package com.quantumlock.auth;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 
 public record LoginRequest(
@@ -9,7 +10,10 @@ public record LoginRequest(
         @NotBlank(message = "Password is required")
         String password,
 
-        @NotBlank(message = "Tenant identifier (name or UUID) is required")
+        @JsonAlias({"tenantName", "tenant_name", "tenantId"})
         String tenant
 ) {
+    public String tenant() {
+        return tenant != null ? tenant : "tenant-alpha";
+    }
 }

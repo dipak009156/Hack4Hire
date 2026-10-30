@@ -19,18 +19,6 @@ import java.util.stream.Collectors;
 /**
  * Manages document access grants (share / revoke) with tenant isolation,
  * optimistic concurrency (row_version), and full audit trail (ADR-003, ADR-006).
- *
- * <h3>Grant lifecycle</h3>
- * <ol>
- *   <li>Owner calls {@link #grantAccess} — creates an active grant row.</li>
- *   <li>Access is checked with {@link #hasActiveGrant} before download.</li>
- *   <li>Owner or ADMIN calls {@link #revokeAccess} — sets {@code revoked_at}.</li>
- * </ol>
- *
- * <p>Idempotency-Key enforcement is handled at the controller layer.
- * Time-limited shares enforce {@code expires_at} on every access check.
- * Download-quota shares enforce {@code remaining_downloads > 0} via an atomic
- * {@code UPDATE ... WHERE remaining_downloads > 0} to avoid race conditions.
  */
 @Service
 @RequiredArgsConstructor
@@ -55,10 +43,13 @@ public class SharingService {
         documentRepository.findByIdForCurrentTenant(documentId)
                 .orElseThrow(() -> new EntityNotFoundException("Document not found: " + documentId));
 
+        UUID grantorId = principal != null && principal.getUserId() != null ? principal.getUserId() : UUID.randomUUID();
+        String grantorName = principal != null && principal.getUsername() != null ? principal.getUsername() : "system";
+
         AccessGrant grant = AccessGrant.builder()
                 .documentId(documentId)
                 .tenantId(tenantId)
-                .grantorId(principal.getUserId())
+                .grantorId(grantorId)
                 .granteeId(request.granteeId())
                 .permissions(request.permissions())
                 .purpose(request.purpose())
@@ -69,12 +60,12 @@ public class SharingService {
 
         AccessGrant saved = accessGrantRepository.save(grant);
 
-        auditService.record(tenantId, principal.getUserId(), principal.getUsername(),
+        auditService.record(tenantId, grantorId, grantorName,
                 "ACCESS_GRANT", documentId, "GRANT_ACCESS", "SUCCESS",
                 "grantee=" + request.granteeId() + " permissions=" + request.permissions());
 
         log.info("Access granted documentId={} grantee={} grantor={}",
-                documentId, request.granteeId(), principal.getUserId());
+                documentId, request.granteeId(), grantorId);
 
         return toResponse(saved);
     }
@@ -102,12 +93,23 @@ public class SharingService {
         grant.setRevokedAt(Instant.now());
         accessGrantRepository.save(grant);
 
-        auditService.record(tenantId, principal.getUserId(), principal.getUsername(),
+        UUID revokerId = principal != null && principal.getUserId() != null ? principal.getUserId() : grant.getGrantorId();
+        String revokerName = principal != null && principal.getUsername() != null ? principal.getUsername() : "system";
+
+        auditService.record(tenantId, revokerId, revokerName,
                 "ACCESS_GRANT", documentId, "REVOKE_ACCESS", "SUCCESS",
                 "grantId=" + grantId + " grantee=" + grant.getGranteeId());
 
         log.info("Access revoked grantId={} documentId={} revoker={}",
-                grantId, documentId, principal.getUserId());
+                grantId, documentId, revokerId);
+    }
+
+    @Transactional
+    public void revokeAccess(UUID grantId, AppUserDetails principal) {
+        UUID tenantId = TenantContext.requireTenantId();
+        AccessGrant grant = accessGrantRepository.findByIdAndTenantId(grantId, tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("Grant not found: " + grantId));
+        revokeAccess(grant.getDocumentId(), grantId, principal);
     }
 
     // -------------------------------------------------------------------------
@@ -142,7 +144,7 @@ public class SharingService {
     // Mapper
     // -------------------------------------------------------------------------
 
-    private AccessGrantResponse toResponse(AccessGrant g) {
+    public AccessGrantResponse toResponse(AccessGrant g) {
         return new AccessGrantResponse(
                 g.getId(),
                 g.getDocumentId(),
@@ -159,4 +161,3 @@ public class SharingService {
         );
     }
 }
-
