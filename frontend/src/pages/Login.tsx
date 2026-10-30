@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest, ApiError } from '../api/client';
 import { LoginResponse } from '../api/types';
-import { Shield, KeyRound, Lock, User, Building, AlertCircle, ArrowRight } from 'lucide-react';
+import { Shield, Lock, User, Building, AlertCircle, ArrowRight } from 'lucide-react';
 import { Button } from '../components/common/Button';
 
 interface DemoUser {
@@ -29,7 +29,7 @@ export const Login: React.FC = () => {
 
   const [tenant, setTenant] = useState('tenant-alpha');
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('password');
+  const [password, setPassword] = useState('password123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +67,7 @@ export const Login: React.FC = () => {
   const handleQuickFill = (user: DemoUser) => {
     setTenant(user.tenant);
     setUsername(user.username);
-    setPassword('password');
+    setPassword('password123');
     setError(null);
   };
 

@@ -10,7 +10,6 @@ import {
   Trash2,
   AlertTriangle,
   Layers,
-  ArrowRight,
   ShieldCheck,
   Server,
   Database,

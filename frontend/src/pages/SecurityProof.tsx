@@ -2,20 +2,7 @@ import React, { useState } from 'react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { apiRequest } from '../api/client';
-import {
-  Award,
-  Play,
-  CheckCircle2,
-  XCircle,
-  ShieldCheck,
-  ShieldAlert,
-  Loader2,
-  FileText,
-  KeyRound,
-  RotateCcw,
-  Share2,
-  Search,
-} from 'lucide-react';
+import { Play, CheckCircle2 } from 'lucide-react';
 
 interface DemoStep {
   id: string;

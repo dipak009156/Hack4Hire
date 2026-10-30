@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { CipherstormReport, CipherstormCheck } from '../api/types';
+import { CipherstormReport } from '../api/types';
 import {
-  ShieldAlert,
-  ShieldCheck,
   Upload,
   FileCheck2,
-  AlertOctagon,
   CheckCircle2,
   XCircle,
-  FileText,
 } from 'lucide-react';
 
 const DEFAULT_REPORT: CipherstormReport = {
@@ -136,7 +132,7 @@ export const Cipherstorm: React.FC = () => {
         } else {
           alert('Invalid CIPHERSTORM report JSON structure.');
         }
-      } catch (err) {
+      } catch {
         alert('Failed to parse JSON file.');
       }
     };

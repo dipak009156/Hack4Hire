@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,18 +19,23 @@ public class DataInitializer implements CommandLineRunner {
 
     private final TenantRepository tenantRepository;
     private final AppUserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public static final UUID TENANT_ALPHA_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     public static final UUID TENANT_BETA_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     public static final UUID TENANT_GAMMA_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
-    private static final String DEFAULT_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LnTv23WLX5W";
-
     @Override
     @Transactional
     public void run(String... args) {
+        String hash = passwordEncoder.encode("password123");
+        userRepository.findAll().forEach(u -> {
+            u.setPasswordHash(hash);
+            userRepository.save(u);
+        });
+
         if (tenantRepository.count() > 0) {
-            log.info("Database already seeded with tenants. Skipping programmatic data initialization.");
+            log.info("Database users updated with password123. Skipping initial seeding.");
             return;
         }
 
@@ -67,7 +73,7 @@ public class DataInitializer implements CommandLineRunner {
                 .id(userId)
                 .tenantId(tenantId)
                 .username(username)
-                .passwordHash(DEFAULT_HASH)
+                .passwordHash(passwordEncoder.encode("password123"))
                 .roles(roles)
                 .department(department)
                 .deviceTrustLevel(deviceTrustLevel)
