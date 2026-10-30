@@ -1,0 +1,40 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/quantumlock_test
+    username: qluser
+    password: qlpass
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+jwt:
+  secret: a-very-long-dev-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256
+  expiration-ms: 3600000
+
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: test-bucket
+
+kms:
+  current-version: 1
+  fault-enabled: false
+  keys:
+    1: "u7x8Q4z+1vP3mN9kL2jH5gF8dE1cA4bZ7yX0wV3uT6s="
+    2: "p2O5r8U1y4A7d0G3j6M9p2S5v8Y1b4E7h0K3n6Q9t2W="
+    3: "e3H6k9N2q5T8w1Z4c7F0i3L6o9R2u5X8a1D4g7J0m3P="
+
+policy:
+  max-staleness-ms: 5000
+
+logging:
+  level:
+    root: INFO
+    com.quantumlock: DEBUG
