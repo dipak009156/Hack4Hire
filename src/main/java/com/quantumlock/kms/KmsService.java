@@ -38,5 +38,15 @@ public interface KmsService {
      * Returns the version number of the currently active KEK used for new wrap operations.
      */
     int currentKekVersion();
+
+    /**
+     * Wraps a plaintext DEK using a specific KEK version (used during key rotation
+     * to re-wrap DEKs with a new target KEK without changing the current-version default).
+     *
+     * @param plaintextDek raw DEK bytes
+     * @param kekVersion   the target KEK version to wrap with
+     * @return {@link WrappedDek} wrapped with the specified version
+     */
+    WrappedDek wrapDekWithVersion(byte[] plaintextDek, int kekVersion);
 }
 

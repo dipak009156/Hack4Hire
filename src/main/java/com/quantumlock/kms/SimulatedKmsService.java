@@ -87,6 +87,22 @@ public class SimulatedKmsService implements KmsService {
         return props.currentVersion();
     }
 
+    @Override
+    public WrappedDek wrapDekWithVersion(byte[] plaintextDek, int kekVersion) {
+        checkFault("wrapDekWithVersion");
+        SecretKey kek = resolveKek(kekVersion);
+        try {
+            Cipher cipher = Cipher.getInstance(WRAP_ALGORITHM);
+            cipher.init(Cipher.WRAP_MODE, kek);
+            SecretKey dekKey = new SecretKeySpec(plaintextDek, KEY_ALGORITHM);
+            byte[] wrapped = cipher.wrap(dekKey);
+            log.debug("DEK wrapped with target KEK version={}", kekVersion);
+            return new WrappedDek(wrapped, kekVersion);
+        } catch (Exception e) {
+            throw new KmsException("Failed to wrap DEK with KEK version=" + kekVersion, e);
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
