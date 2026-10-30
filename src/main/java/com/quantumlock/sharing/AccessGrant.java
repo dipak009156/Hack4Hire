@@ -2,6 +2,8 @@ package com.quantumlock.sharing;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.List;
@@ -39,9 +41,8 @@ public class AccessGrant {
     @Column(name = "grantee_id", nullable = false)
     private UUID granteeId;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "access_grant", joinColumns = @JoinColumn(name = "id"))
-    @Column(name = "permissions")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "permissions", columnDefinition = "text[]", nullable = false)
     @Builder.Default
     private List<String> permissions = List.of("READ");
 
