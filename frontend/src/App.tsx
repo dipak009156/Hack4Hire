@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@ta
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { ToastProvider } from './components/common/Toast';
+import { AccessDenied } from './components/common/AccessDenied';
 import { ApiError } from './api/client';
 
 // 11 Pages
@@ -123,17 +124,22 @@ const queryClient = new QueryClient({
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: string;
+  requiredAnyRole?: string[];
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
-  const { isAuthenticated, hasRole } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole, requiredAnyRole }) => {
+  const { isAuthenticated, hasRole, hasAnyRole } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (requiredRole && !hasRole(requiredRole)) {
-    return <Navigate to="/" replace />;
+    return <AccessDenied requiredRole={requiredRole} />;
+  }
+
+  if (requiredAnyRole && !hasAnyRole(requiredAnyRole)) {
+    return <AccessDenied requiredRole={requiredAnyRole.join(' or ')} />;
   }
 
   return <>{children}</>;
@@ -159,10 +165,26 @@ export const App: React.FC = () => {
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Dashboard />} />
-                  <Route path="documents" element={<Documents />} />
-                  <Route path="search" element={<Search />} />
-                  <Route path="sharing" element={<Sharing />} />
+                  <Route index element={
+                    <ProtectedRoute requiredAnyRole={['ADMIN', 'USER']}>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="documents" element={
+                    <ProtectedRoute requiredAnyRole={['ADMIN', 'USER']}>
+                      <Documents />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="search" element={
+                    <ProtectedRoute requiredAnyRole={['ADMIN', 'USER']}>
+                      <Search />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="sharing" element={
+                    <ProtectedRoute requiredAnyRole={['ADMIN', 'USER']}>
+                      <Sharing />
+                    </ProtectedRoute>
+                  } />
                   <Route
                     path="key-management"
                     element={
@@ -179,7 +201,11 @@ export const App: React.FC = () => {
                       </ProtectedRoute>
                     }
                   />
-                  <Route path="audit-log" element={<AuditLog />} />
+                  <Route path="audit-log" element={
+                    <ProtectedRoute requiredAnyRole={['ADMIN', 'AUDITOR']}>
+                      <AuditLog />
+                    </ProtectedRoute>
+                  } />
                   <Route
                     path="recovery"
                     element={
@@ -196,7 +222,11 @@ export const App: React.FC = () => {
                       </ProtectedRoute>
                     }
                   />
-                  <Route path="security-proof" element={<SecurityProof />} />
+                  <Route path="security-proof" element={
+                    <ProtectedRoute requiredAnyRole={['ADMIN', 'USER']}>
+                      <SecurityProof />
+                    </ProtectedRoute>
+                  } />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />

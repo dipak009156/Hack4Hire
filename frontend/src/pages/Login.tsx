@@ -50,7 +50,13 @@ export const Login: React.FC = () => {
       });
 
       login(res);
-      navigate('/');
+      // Redirect auditors directly to their only page
+      const payload = res.roles ?? [];
+      if (payload.includes('AUDITOR') && !payload.includes('ADMIN')) {
+        navigate('/audit-log');
+      } else {
+        navigate('/');
+      }
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         setError(err.problem.detail || err.problem.title || 'Authentication failed');

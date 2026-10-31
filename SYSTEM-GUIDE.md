@@ -666,3 +666,4 @@ QUANTUM-LOCK is a complete, production-grade, zero-trust document security platf
 ---
 
 *Built with Spring Boot 3.3, Java 21, React 18, TypeScript, Tailwind CSS, PostgreSQL, MinIO, Redis, RabbitMQ.*
+
