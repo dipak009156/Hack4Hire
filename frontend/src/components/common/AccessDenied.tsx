@@ -74,3 +74,4 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({
     </div>
   );
 };
+

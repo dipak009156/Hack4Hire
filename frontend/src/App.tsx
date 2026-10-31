@@ -19,6 +19,7 @@ import { AuditLog } from './pages/AuditLog';
 import { Recovery } from './pages/Recovery';
 import { Cipherstorm } from './pages/Cipherstorm';
 import { SecurityProof } from './pages/SecurityProof';
+import { UserManagement } from './pages/UserManagement';
 
 // ─── Error Boundary ────────────────────────────────────────────────────────────
 
@@ -198,6 +199,14 @@ export const App: React.FC = () => {
                     element={
                       <ProtectedRoute requiredRole="ADMIN">
                         <Policies />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="users"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <UserManagement />
                       </ProtectedRoute>
                     }
                   />

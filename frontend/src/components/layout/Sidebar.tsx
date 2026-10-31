@@ -16,6 +16,7 @@ import {
   X,
   Building2,
   UserCircle2,
+  Users,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -46,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
     // ADMIN-only pages
     { to: '/key-management', label: 'Key Management',    icon: KeyRound,        show: isAdmin },
     { to: '/policies',       label: 'Policies',          icon: FileCode2,       show: isAdmin },
+    { to: '/users',          label: 'User Management',   icon: Users,           show: isAdmin },
     // ADMIN + AUDITOR pages
     { to: '/audit-log',      label: 'Audit Log',         icon: ScrollText,      show: isAdmin || isAuditor },
     // ADMIN-only pages (continued)
@@ -66,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
     },
     {
       label: 'Administration',
-      items: navItems.filter(n => ['/key-management', '/policies', '/recovery', '/cipherstorm'].includes(n.to)),
+      items: navItems.filter(n => ['/key-management', '/policies', '/users', '/recovery', '/cipherstorm'].includes(n.to)),
     },
     {
       label: 'Compliance',
