@@ -10,6 +10,7 @@ import { Drawer } from '../components/common/Drawer';
 import { Skeleton } from '../components/common/Skeleton';
 import { EmptyState } from '../components/common/EmptyState';
 import { generateIdempotencyKey } from '../utils/idempotency';
+import { useToast } from '../components/common/Toast';
 import {
   FileText,
   Upload,
@@ -26,6 +27,7 @@ import {
 
 export const Documents: React.FC = () => {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   // Selected document for Drawer inspection
   const [selectedDoc, setSelectedDoc] = useState<DocumentResponse | null>(null);
@@ -105,7 +107,7 @@ export const Documents: React.FC = () => {
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       if (selectedDoc) {
         queryClient.invalidateQueries({ queryKey: ['document-versions', selectedDoc.id] });
@@ -113,6 +115,10 @@ export const Documents: React.FC = () => {
       setIsUploadOpen(false);
       setIsNewVersionOpen(false);
       resetForm();
+      showToast({
+        type: 'success',
+        message: `"${(data as DocumentResponse).name || 'Document'}" uploaded & committed successfully.`,
+      });
     },
     onError: (err: unknown) => {
       if (err instanceof ApiError) {

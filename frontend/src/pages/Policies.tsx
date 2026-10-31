@@ -7,6 +7,7 @@ import { Button } from '../components/common/Button';
 import { Dialog } from '../components/common/Dialog';
 import { Skeleton } from '../components/common/Skeleton';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/common/Toast';
 import {
   FileCode2,
   Edit,
@@ -22,6 +23,7 @@ export const Policies: React.FC = () => {
   const queryClient = useQueryClient();
   const { hasRole } = useAuth();
   const isAdmin = hasRole('ADMIN');
+  const { showToast } = useToast();
 
   const [editingPolicy, setEditingPolicy] = useState<PolicyDto | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -65,11 +67,15 @@ export const Policies: React.FC = () => {
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
       setEditingPolicy(null);
       setIsCreateOpen(false);
       resetForm();
+      showToast({
+        type: 'success',
+        message: `Policy "${(data as PolicyDto).name || ''}" saved successfully.`,
+      });
     },
     onError: (err: unknown) => {
       if (err instanceof ApiError) {

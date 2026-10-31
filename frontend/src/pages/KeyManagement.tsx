@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, ApiError } from '../api/client';
 import { KeyRotationResponse } from '../api/types';
+import { useToast } from '../components/common/Toast';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Dialog } from '../components/common/Dialog';
@@ -22,6 +23,7 @@ export const KeyManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const { hasRole } = useAuth();
   const isAdmin = hasRole('ADMIN');
+  const { showToast } = useToast();
 
   const [isRotateModalOpen, setIsRotateModalOpen] = useState(false);
   const [targetKekVersion, setTargetKekVersion] = useState(2);
@@ -72,6 +74,10 @@ export const KeyManagement: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['rotation-history'] });
       queryClient.invalidateQueries({ queryKey: ['current-kek'] });
       setIdempotencyKey(generateIdempotencyKey('rotate-kek'));
+      showToast({
+        type: 'success',
+        message: `KEK rotation v${data.sourceKekVersion}→v${data.targetKekVersion} started. Job: ${data.id.slice(0, 8)}...`,
+      });
     },
     onError: (err: unknown) => {
       if (err instanceof ApiError) {

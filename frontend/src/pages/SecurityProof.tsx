@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { apiRequest } from '../api/client';
+import { apiRequest, ApiError } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { Play, CheckCircle2 } from 'lucide-react';
 
 interface DemoStep {
@@ -41,6 +42,8 @@ const GUARANTEES_DATA: GuaranteeStatus[] = [
 ];
 
 export const SecurityProof: React.FC = () => {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('ADMIN');
   const [stepResults, setStepResults] = useState<Record<string, { status: 'RUNNING' | 'SUCCESS' | 'ERROR'; output?: string }>>({});
 
   const demoSteps: DemoStep[] = [
@@ -188,6 +191,9 @@ export const SecurityProof: React.FC = () => {
       description: 'Scans stale uploads (>5m), uses compare-and-set to RECOVERING, purges orphans.',
       endpoint: 'POST /api/v1/admin/reconcile',
       action: async () => {
+        if (!isAdmin) {
+          return 'ADMIN role required for orphan reconciliation — step skipped for non-admin. Invariant I1 enforced via PENDING→COMMITTED state machine.';
+        }
         const res = await apiRequest<{ staleRecordsFound: number; recovered: number; objectsDeleted: number }>(
           '/admin/reconcile',
           { method: 'POST' }

@@ -8,6 +8,7 @@ import { Dialog } from '../components/common/Dialog';
 import { Skeleton } from '../components/common/Skeleton';
 import { EmptyState } from '../components/common/EmptyState';
 import { generateIdempotencyKey } from '../utils/idempotency';
+import { useToast } from '../components/common/Toast';
 import {
   Share2,
   UserCheck,
@@ -22,6 +23,7 @@ import {
 
 export const Sharing: React.FC = () => {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'my-grants' | 'shared-with-me'>('my-grants');
@@ -71,10 +73,11 @@ export const Sharing: React.FC = () => {
         body: JSON.stringify(body),
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['my-grants'] });
       setIsCreateOpen(false);
       resetForm();
+      showToast({ type: 'success', message: `Access grant created. Grantee has ${(data as { remainingDownloads?: number }).remainingDownloads ?? '∞'} downloads remaining.` });
     },
     onError: (err: unknown) => {
       if (err instanceof ApiError) {
@@ -133,6 +136,7 @@ export const Sharing: React.FC = () => {
         text: `Successfully downloaded "${res.name}". Remaining download quota updated.`,
       });
       queryClient.invalidateQueries({ queryKey: ['my-grants'] });
+      showToast({ type: 'success', message: `Downloaded "${res.name}" successfully.` });
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         setDownloadMessage({
@@ -468,6 +472,43 @@ export const Sharing: React.FC = () => {
                 className="w-full px-3.5 py-2 rounded-xl border border-sand bg-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-terracotta"
               />
             </div>
+          </div>
+
+          {/* Permissions Multi-Select */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-brown/80 mb-2">
+              Permissions
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(['READ', 'WRITE', 'DOWNLOAD'] as const).map((perm) => {
+                const isChecked = permissions.includes(perm);
+                return (
+                  <button
+                    key={perm}
+                    type="button"
+                    onClick={() => {
+                      if (isChecked) {
+                        // Always keep at least READ
+                        if (perm === 'READ' && permissions.length === 1) return;
+                        setPermissions(permissions.filter((p) => p !== perm));
+                      } else {
+                        setPermissions([...permissions, perm]);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all font-mono ${
+                      isChecked
+                        ? 'bg-terracotta text-cream border-terracotta shadow-sm'
+                        : 'bg-white/80 text-brown border-sand hover:bg-sand/30'
+                    }`}
+                  >
+                    {perm}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-brown/50 mt-1.5">
+              READ is always required. Active: [{permissions.join(', ')}]
+            </p>
           </div>
 
           <div>

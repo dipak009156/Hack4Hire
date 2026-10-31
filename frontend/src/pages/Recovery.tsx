@@ -5,6 +5,7 @@ import { ReconcileResult } from '../api/types';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/common/Toast';
 import {
   RotateCcw,
   CheckCircle2,
@@ -19,6 +20,7 @@ import {
 export const Recovery: React.FC = () => {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('ADMIN');
+  const { showToast } = useToast();
   const [lastResult, setLastResult] = useState<ReconcileResult | null>(null);
 
   const reconcileMutation = useMutation({
@@ -27,6 +29,10 @@ export const Recovery: React.FC = () => {
     },
     onSuccess: (data) => {
       setLastResult(data);
+      showToast({
+        type: 'success',
+        message: `Reconciled: ${data.staleRecordsFound} stale found, ${data.recovered} recovered, ${data.objectsDeleted} orphans purged.`,
+      });
     },
   });
 
