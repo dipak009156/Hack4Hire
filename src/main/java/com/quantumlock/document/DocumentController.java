@@ -44,12 +44,6 @@ public class DocumentController {
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
     private final SearchService searchService;
-    private final DocumentRepository documentRepository;
-    private final DocumentVersionRepository documentVersionRepository;
-    private final AccessGrantRepository accessGrantRepository;
-    private final EnvelopeEncryptionService encryptionService;
-    private final ObjectStoreService objectStoreService;
-    private final AuditService auditService;
 
     // -------------------------------------------------------------------------
     // POST /api/v1/documents — Upload new document
@@ -220,82 +214,7 @@ public class DocumentController {
         return ResponseEntity.ok(documentService.getVersions(id));
     }
 
-    // -------------------------------------------------------------------------
-    // GET /api/v1/documents/{id}/download — Decrypt & Download Document
-    // -------------------------------------------------------------------------
 
-    @GetMapping("/{id}/download")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Download and decrypt document content",
-               description = "Enforces linearized revocation (HTTP 410) and download quotas before unwrapping DEK and decrypting ciphertext.")
-    public ResponseEntity<String> downloadDocument(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal AppUserDetails principal) {
-
-        UUID tenantId = TenantContext.requireTenantId();
-        Document doc = documentRepository.findByIdForCurrentTenant(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
-
-        boolean isOwner = doc.getOwnerId() != null && doc.getOwnerId().equals(principal.getUserId());
-        boolean isAdmin = principal.getAuthorities() != null && principal.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-
-        if (!isOwner && !isAdmin) {
-            List<AccessGrant> grants = accessGrantRepository
-                    .findAllByDocumentIdAndGranteeIdAndTenantIdOrderByCreatedAtDesc(id, principal.getUserId(), tenantId);
-
-            if (grants.isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: No grant found");
-            }
-
-            AccessGrant grant = grants.get(0);
-            if (grant.getRevokedAt() != null) {
-                throw new ResponseStatusException(HttpStatus.GONE, "Access grant has been revoked");
-            }
-            if (grant.getExpiresAt() != null && grant.getExpiresAt().isBefore(Instant.now())) {
-                throw new ResponseStatusException(HttpStatus.GONE, "Access grant has expired");
-            }
-            if (grant.getRemainingDownloads() != null) {
-                if (grant.getRemainingDownloads() <= 0) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Download quota exceeded");
-                }
-                grant.setRemainingDownloads(grant.getRemainingDownloads() - 1);
-                accessGrantRepository.save(grant);
-            }
-        }
-
-        DocumentVersion version = documentVersionRepository
-                .findByDocumentIdAndTenantIdAndVersion(id, tenantId, doc.getCurrentVersion())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document version not found"));
-
-        byte[] ciphertext = objectStoreService.getObject(version.getObjectKey());
-        byte[] nonce = Base64.getDecoder().decode(version.getNonce());
-        byte[] wrappedDekBytes = Base64.getDecoder().decode(version.getWrappedDek());
-
-        byte[] plaintext = encryptionService.decrypt(
-                ciphertext,
-                nonce,
-                wrappedDekBytes,
-                version.getKekVersion(),
-                version.getCiphertextDigest(),
-                tenantId,
-                id,
-                version.getVersion()
-        );
-
-        auditService.record(
-                tenantId,
-                principal.getUserId(),
-                principal.getUsername(),
-                "DOCUMENT",
-                id,
-                "DOWNLOAD",
-                "SUCCESS",
-                "version=" + version.getVersion()
-        );
-
-        return ResponseEntity.ok(new String(plaintext, StandardCharsets.UTF_8));
-    }
 
     private void requireIdempotencyKey(String idempotencyKey) {
         if (!StringUtils.hasText(idempotencyKey)) {

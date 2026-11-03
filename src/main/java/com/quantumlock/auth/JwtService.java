@@ -46,18 +46,14 @@ public class JwtService {
 
         if (user instanceof AppUserDetails appUser && appUser.getUserId() != null) {
             builder.claim("user_id", appUser.getUserId().toString());
+            builder.claim("uid", appUser.getUserId().toString());
         }
 
         return builder
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(signingKey, Jwts.SIG.HS256);
-
-        if (user instanceof AppUserDetails aud && aud.getUserId() != null) {
-            builder.claim("uid", aud.getUserId().toString());
-        }
-
-        return builder.compact();
+                .signWith(signingKey, Jwts.SIG.HS256)
+                .compact();
     }
 
     public Claims validateToken(String token) {

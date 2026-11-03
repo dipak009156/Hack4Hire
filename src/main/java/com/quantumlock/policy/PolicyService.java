@@ -52,7 +52,7 @@ public class PolicyService {
                 .updatedAt(Instant.now())
                 .build();
 
-        Policy saved = policyRepository.save(policy);
+        Policy saved = policyRepository.saveAndFlush(policy);
 
         auditService.record(tenantId, principal.getUserId(), principal.getUsername(),
                 "POLICY", saved.getId(), "POLICY_CREATED", "SUCCESS",
@@ -78,7 +78,7 @@ public class PolicyService {
         policy.setUpdatedBy(principal.getUsername());
         policy.setUpdatedAt(Instant.now());
 
-        Policy updated = policyRepository.save(policy);
+        Policy updated = policyRepository.saveAndFlush(policy);
 
         auditService.record(tenantId, principal.getUserId(), principal.getUsername(),
                 "POLICY", updated.getId(), "POLICY_UPDATED", "SUCCESS",

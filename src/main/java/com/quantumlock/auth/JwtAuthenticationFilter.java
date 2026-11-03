@@ -46,7 +46,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UUID tenantId = UUID.fromString(tenantClaim);
 
             String uidClaim = claims.get("uid", String.class);
-            UUID userId = uidClaim != null ? UUID.fromString(uidClaim) : null;
+            if (uidClaim == null || uidClaim.isBlank()) {
+                uidClaim = claims.get("user_id", String.class);
+            }
+            UUID userId = null;
+            if (uidClaim != null && !uidClaim.isBlank()) {
+                try {
+                    userId = UUID.fromString(uidClaim);
+                } catch (IllegalArgumentException ignored) {}
+            }
+            if (userId == null) {
+                try {
+                    AppUserDetails loaded = userDetailsService.loadUserByUsernameAndTenant(username, tenantClaim);
+                    userId = loaded.getUserId();
+                } catch (Exception ignored) {}
+            }
 
             @SuppressWarnings("unchecked")
             List<String> roles = claims.get("roles", List.class);
@@ -60,20 +74,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     roles.stream()
                             .map(r -> new SimpleGrantedAuthority("ROLE_" + r.toUpperCase()))
                             .collect(Collectors.toList());
-
-            String userIdClaim = claims.get("user_id", String.class);
-            UUID userId = null;
-            if (userIdClaim != null && !userIdClaim.isBlank()) {
-                try {
-                    userId = UUID.fromString(userIdClaim);
-                } catch (IllegalArgumentException ignored) {}
-            }
-            if (userId == null) {
-                try {
-                    AppUserDetails loaded = userDetailsService.loadUserByUsernameAndTenant(username, tenantClaim);
-                    userId = loaded.getUserId();
-                } catch (Exception ignored) {}
-            }
 
             AppUserDetails principal = new AppUserDetails(
                     userId,
