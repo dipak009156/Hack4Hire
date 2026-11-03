@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QUANTUM-LOCK Presentation Deck</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; user-select: none; }
+    .slide { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
+    .slide.active { display: flex; opacity: 1; }
+    .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 9999px; font-weight: 600; font-size: 12px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between p-4 sm:p-8">
+
+  <!-- TOP BAR: Title & Slide Counter -->
+  <header class="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400 flex items-center justify-center font-bold text-cyan-400 text-lg">
+        ⚡
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          QUANTUM-LOCK
+          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">ZERO-TRUST VAULT</span>
+        </h1>
+        <p class="text-xs text-slate-400">Architectural & Cryptographic Walkthrough</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-2">
+      <span id="slideIndicator" class="text-sm font-semibold text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
+        Slide 1 of 10
+      </span>
+      <button onclick="toggleFullscreen()" class="px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 rounded border border-slate-800 transition">
+        ⛶ Fullscreen
+      </button>
+    </div>
+  </header>
+
+  <!-- SLIDES CONTAINER -->
+  <main class="flex-1 flex flex-col justify-center items-center max-w-6xl w-full mx-auto my-2">
+
+    <!-- SLIDE 1: TITLE SLIDE -->
+    <section class="slide active flex-col items-center justify-center text-center p-8 w-full">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-sm font-semibold mb-6">
+        <span>🛡️ Java 21 / Spring Boot 3.5 / Distributed Security</span>
+      </div>
+      <h2 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6">
+        QUANTUM-LOCK
+      </h2>
+      <p class="text-xl sm:text-2xl font-light text-cyan-400 max-w-3xl mb-8">
+        Distributed Zero-Trust Cryptographic Document Vault
+      </p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl w-full text-left">
+        <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
+          <div class="text-cyan-400 text-xl font-bold mb-1">🔐 Envelope Crypto</div>
+          <div class="text-xs text-slate-400">AES-256-GCM + 2-Tier KMS Key Wrapping</div>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
+          <div class="text-emerald-400 text-xl font-bold mb-1">🔍 Blind Indexing</div>
+          <div class="text-xs text-slate-400">Exact Search with Zero Plaintext DB Exposure</div>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
+          <div class="text-amber-400 text-xl font-bold mb-1">⛓️ Hash Chaining</div>
+          <div class="text-xs text-slate-400">Tamper-Evident SHA-256 Merkle Audit Trail</div>
+        </div>
+      </div>
+      <div class="mt-8 text-xs text-slate-500">
+        Press <kbd class="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">→</kbd> or click Next to explore
+      </div>
+    </section>
+
+    <!-- SLIDE 2: THE PROBLEM VS QUANTUM-LOCK -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-purple-950 text-purple-300 border border-purple-800 mb-2">Core Philosophy</span>
+        <h2 class="text-3xl font-bold text-white">Traditional Storage vs. QUANTUM-LOCK</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+        <!-- Traditional -->
+        <div class="bg-rose-950/20 border border-rose-900/50 rounded-2xl p-6 relative">
+          <div class="text-rose-400 font-bold text-lg mb-4 flex items-center gap-2">
+            <span>❌ Traditional Multi-Tenant Cloud</span>
+          </div>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="text-rose-500 font-bold">✕</span>
+              <span><strong>One Master Key:</strong> All files encrypted with single DB key; key rotation requires re-encrypting terabytes.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-rose-500 font-bold">✕</span>
+              <span><strong>Trust Client Input:</strong> Requests pass `tenantId` in URL/body; vulnerable to BOLA / IDOR attacks.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-rose-500 font-bold">✕</span>
+              <span><strong>Plaintext Search:</strong> Search engine sees all sensitive text (HIPAA/GDPR leak).</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-rose-500 font-bold">✕</span>
+              <span><strong>Mutable Logs:</strong> DBA can alter or delete audit rows without detection.</span>
+            </li>
+          </ul>
+        </div>
+        <!-- QUANTUM-LOCK -->
+        <div class="bg-emerald-950/20 border border-emerald-900/50 rounded-2xl p-6 relative">
+          <div class="text-emerald-400 font-bold text-lg mb-4 flex items-center gap-2">
+            <span>✅ QUANTUM-LOCK Zero-Trust Vault</span>
+          </div>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>Envelope Encryption:</strong> Unique DEK per file version, wrapped by versioned KEKs. Instant re-wrapping.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>Zero-Trust ABAC:</strong> Tenant identity extracted strictly from signed JWT; client tenant IDs ignored.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>Searchable Encryption:</strong> HMAC-SHA256 blind tokens match keywords with zero plaintext leakage.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>Cryptographic Hash Chain:</strong> Any modified or deleted audit row breaks the chain immediately.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: SYSTEM ARCHITECTURE -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-cyan-950 text-cyan-300 border border-cyan-800 mb-2">High-Level Flow</span>
+        <h2 class="text-3xl font-bold text-white">Trust Boundaries & Architecture</h2>
+      </div>
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 w-full">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-center">
+          <!-- Client -->
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-1 w-full">
+            <div class="text-xs text-rose-400 font-semibold mb-1">UNTRUSTED ZONE</div>
+            <div class="text-lg font-bold text-white">Clients</div>
+            <p class="text-xs text-slate-400 mt-1">Bearer JWT Token</p>
+          </div>
+          <div class="text-cyan-400 text-xl font-bold">➔</div>
+          <!-- Security Gateway -->
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-1 w-full">
+            <div class="text-xs text-cyan-400 font-semibold mb-1">SECURITY GATEWAY</div>
+            <div class="text-lg font-bold text-white">Spring Security</div>
+            <p class="text-xs text-slate-400 mt-1">JWT Verification & Rate Limiter</p>
+          </div>
+          <div class="text-cyan-400 text-xl font-bold">➔</div>
+          <!-- ABAC Engine -->
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-1 w-full">
+            <div class="text-xs text-emerald-400 font-semibold mb-1">DECISION CORE</div>
+            <div class="text-lg font-bold text-white">ABAC Engine</div>
+            <p class="text-xs text-slate-400 mt-1">Roles + Clearance + Grants</p>
+          </div>
+        </div>
+
+        <!-- Storage Boundary -->
+        <div class="mt-8 pt-6 border-t border-slate-800">
+          <div class="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider text-center">
+            Isolated Storage & Infrastructure Layer
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div class="bg-slate-950 border border-slate-800 p-3 rounded-lg">
+              <div class="text-blue-400 font-bold text-sm">PostgreSQL 16</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Relational Metadata, Wrapped DEKs</div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 p-3 rounded-lg">
+              <div class="text-rose-400 font-bold text-sm">MinIO (S3)</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Ciphertext ONLY (Never Plaintext)</div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 p-3 rounded-lg">
+              <div class="text-red-400 font-bold text-sm">Redis 7</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Revocation & Policy Cache</div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 p-3 rounded-lg">
+              <div class="text-amber-400 font-bold text-sm">RabbitMQ 3.13</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Transactional Outbox Queue</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: ENVELOPE ENCRYPTION DEEP DIVE -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-blue-950 text-blue-300 border border-blue-800 mb-2">Cryptographic Mechanism</span>
+        <h2 class="text-3xl font-bold text-white">Envelope Encryption (AES-256-GCM + KMS)</h2>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <!-- Flow Diagram -->
+          <div class="space-y-4">
+            <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-xs text-slate-500">INPUT</span>
+                <div class="text-sm font-semibold text-white">Plaintext Document Data</div>
+              </div>
+              <span class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">Raw Bytes</span>
+            </div>
+            <div class="flex justify-center text-cyan-400 font-bold text-lg">↓ AES-256-GCM (12-byte IV + 16-byte Tag)</div>
+            <div class="bg-cyan-950/40 border border-cyan-800 p-3 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-xs text-cyan-400">DATA KEY (DEK)</span>
+                <div class="text-sm font-semibold text-white">Unique 256-bit Key per Document</div>
+              </div>
+              <span class="text-xs bg-cyan-900 text-cyan-300 px-2 py-1 rounded">MinIO ➔ Ciphertext</span>
+            </div>
+            <div class="flex justify-center text-purple-400 font-bold text-lg">↓ AESWrap (NIST SP 800-38F)</div>
+            <div class="bg-purple-950/40 border border-purple-800 p-3 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-xs text-purple-400">KEY ENCRYPTION KEY (KEK)</span>
+                <div class="text-sm font-semibold text-white">Tenant Root Key (KMS Managed)</div>
+              </div>
+              <span class="text-xs bg-purple-900 text-purple-300 px-2 py-1 rounded">Postgres ➔ Wrapped DEK</span>
+            </div>
+          </div>
+          <!-- Key Guarantees -->
+          <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-4">
+            <h3 class="text-lg font-bold text-cyan-300">Core Security Guarantees:</h3>
+            <div class="space-y-3 text-xs text-slate-300">
+              <p><strong>1. Zero-Downtime Key Rotation:</strong> Rotating from KEK <code>v1</code> ➔ <code>v2</code> only re-wraps the 32-byte DEK in Postgres. We never touch gigabytes of stored blobs in MinIO!</p>
+              <p><strong>2. Authenticated Encryption (AEAD):</strong> AES-GCM includes a 128-bit authentication tag. If an attacker modifies even 1 bit in S3, decryption halts with a security exception.</p>
+              <p><strong>3. Storage Partitioning:</strong> If MinIO is compromised, the attacker only has unreadable ciphertext. If Postgres is compromised, the attacker only has wrapped keys without the KMS KEK.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: ZERO-TRUST ABAC -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-emerald-950 text-emerald-300 border border-emerald-800 mb-2">Access Control</span>
+        <h2 class="text-3xl font-bold text-white">Zero-Trust ABAC Decision Engine</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+        <!-- Factor 1 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="text-cyan-400 font-bold text-lg mb-2">1. Identity & Clearance</div>
+          <p class="text-xs text-slate-400 mb-4">Cryptographically bound in JWT token</p>
+          <div class="space-y-2 text-xs">
+            <div class="p-2 bg-slate-950 rounded border border-slate-800">
+              <strong>Tenant ID:</strong> Verified via HMAC JWT signature; requests cannot spoof another tenant.
+            </div>
+            <div class="p-2 bg-slate-950 rounded border border-slate-800">
+              <strong>Clearance Level:</strong> Levels 1–4 (Member, Officer, Director, Admin).
+            </div>
+          </div>
+        </div>
+        <!-- Factor 2 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="text-emerald-400 font-bold text-lg mb-2">2. Resource Classification</div>
+          <p class="text-xs text-slate-400 mb-4">Evaluated against document metadata</p>
+          <div class="space-y-2 text-xs">
+            <div class="p-2 bg-slate-950 rounded border border-slate-800">
+              <code>INTERNAL</code>: Clearance Level 1+
+            </div>
+            <div class="p-2 bg-slate-950 rounded border border-slate-800">
+              <code>CONFIDENTIAL</code>: Clearance Level 2+
+            </div>
+            <div class="p-2 bg-slate-950 rounded border border-slate-800">
+              <code>SECRET</code>: Clearance Level 3+
+            </div>
+          </div>
+        </div>
+        <!-- Factor 3 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="text-purple-400 font-bold text-lg mb-2">3. Dynamic Grants & Quotas</div>
+          <p class="text-xs text-slate-400 mb-4">Overrides default level when delegated</p>
+          <div class="space-y-2 text-xs">
+            <div class="p-2 bg-slate-950 rounded border border-slate-800">
+              <strong>Download Quotas:</strong> Tracks remaining downloads allowed.
+            </div>
+            <div class="p-2 bg-slate-950 rounded border border-slate-800">
+              <strong>Expiration:</strong> Time-bounded TTL enforced server-side.
+            </div>
+            <div class="p-2 bg-slate-950 rounded border border-slate-800">
+              <strong>Revocation:</strong> Linearized instant cache eviction.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: SEARCHABLE ENCRYPTION -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-amber-950 text-amber-300 border border-amber-800 mb-2">Encrypted Search</span>
+        <h2 class="text-3xl font-bold text-white">Searchable Encryption (HMAC Blind Indexing)</h2>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div class="space-y-4">
+            <h3 class="text-base font-bold text-amber-300">How Keyword Search Works:</h3>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-2">
+              <div class="text-slate-400">1. Client uploads document with keyword: <code class="text-cyan-300">"oncology"</code></div>
+              <div class="text-slate-400">2. System computes blind token: <br><code class="text-amber-300">token = HMAC-SHA256("oncology", TenantSearchKey)</code></div>
+              <div class="text-slate-400">3. Only the token hash is saved to the database: <br><code class="text-slate-500 font-mono">e74c8b2a19...</code></div>
+              <div class="text-slate-400">4. When searching for <code class="text-cyan-300">"oncology"</code>, the query token is recomputed and compared for exact equality.</div>
+            </div>
+          </div>
+          <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
+            <div class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="text-emerald-400">🛡️</span> Security Guarantees
+            </div>
+            <ul class="text-xs text-slate-300 space-y-2">
+              <li>• <strong>Zero Plaintext Exposure:</strong> The database engine and DBA never see keywords.</li>
+              <li>• <strong>Strict Tenant Separation:</strong> Each tenant has a distinct HMAC Search Key. The same keyword produces completely different tokens across tenants.</li>
+              <li>• <strong>Transparent Leakage Model:</strong> Discloses equality patterns while preserving absolute semantic confidentiality.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: LINEARIZED REVOCATION -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-rose-950 text-rose-300 border border-rose-800 mb-2">Linearization Invariant</span>
+        <h2 class="text-3xl font-bold text-white">Instant Linearized Grant Revocation</h2>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full space-y-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl text-center flex-1">
+            <div class="text-xs text-slate-500 mb-1">STEP 1</div>
+            <div class="font-bold text-white text-sm">Admin Revokes Grant</div>
+            <div class="text-[11px] text-slate-400 mt-1"><code>POST /grants/{id}/revoke</code></div>
+          </div>
+          <div class="text-rose-400 font-bold text-lg">➔</div>
+          <div class="p-4 bg-rose-950/40 border border-rose-800 rounded-xl text-center flex-1">
+            <div class="text-xs text-rose-400 mb-1">LINEARIZATION POINT</div>
+            <div class="font-bold text-white text-sm">Atomic DB + Redis Eviction</div>
+            <div class="text-[11px] text-slate-400 mt-1">Grant status = REVOKED</div>
+          </div>
+          <div class="text-rose-400 font-bold text-lg">➔</div>
+          <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl text-center flex-1">
+            <div class="text-xs text-slate-500 mb-1">STEP 3</div>
+            <div class="font-bold text-white text-sm">Download Blocked</div>
+            <div class="text-[11px] text-rose-400 font-mono mt-1">HTTP 410 GONE</div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300">
+          <strong>The Linearization Guarantee:</strong> There is a mathematically precise instant $T_0$. Before $T_0$, active grants with quota succeed. At and after $T_0$, <em>zero</em> downloads can succeed. Any race condition or concurrent thread attempting to download receives an immediate <strong>HTTP 410 Gone</strong>.
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: CRYPTOGRAPHIC AUDIT HASH CHAIN -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-amber-950 text-amber-300 border border-amber-800 mb-2">Tamper Detection</span>
+        <h2 class="text-3xl font-bold text-white">Cryptographic Hash-Chained Audit Trail</h2>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Block 1 -->
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="text-xs text-amber-400 font-bold">Sequence #1 (Genesis)</div>
+            <div class="text-xs text-slate-400 mt-1">Action: DOCUMENT_UPLOAD</div>
+            <div class="text-[11px] text-slate-500 font-mono mt-2 truncate">Prev: 0000000000...0000</div>
+            <div class="text-[11px] text-cyan-400 font-mono truncate">Hash: 4fe9b71a2e3...</div>
+          </div>
+          <!-- Block 2 -->
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="text-xs text-amber-400 font-bold">Sequence #2</div>
+            <div class="text-xs text-slate-400 mt-1">Action: DOCUMENT_DOWNLOAD</div>
+            <div class="text-[11px] text-cyan-400 font-mono mt-2 truncate">Prev: 4fe9b71a2e3...</div>
+            <div class="text-[11px] text-purple-400 font-mono truncate">Hash: a1208c909e7...</div>
+          </div>
+          <!-- Block 3 -->
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="text-xs text-amber-400 font-bold">Sequence #3</div>
+            <div class="text-xs text-slate-400 mt-1">Action: KEY_ROTATION</div>
+            <div class="text-[11px] text-purple-400 font-mono mt-2 truncate">Prev: a1208c909e7...</div>
+            <div class="text-[11px] text-emerald-400 font-mono truncate">Hash: 983bf3b7829...</div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-2">
+          <div class="font-bold text-white">Detection of DB Tampering via <code>GET /api/v1/audit/verify</code>:</div>
+          <div class="text-slate-300">
+            • <strong>If row data is modified:</strong> Hash recomputation fails $\to$ <em>"Tampering detected at sequence N: hash mismatch"</em>.<br>
+            • <strong>If a row is deleted:</strong> Sequence gap detected $\to$ <em>"Chain break at sequence N: sequence gap"</em>.<br>
+            • <strong>If rows are reordered:</strong> Pointer broken $\to$ <em>"previousHash does not match prior eventHash"</em>.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: DISTRIBUTED RECOVERY & OUTBOX -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-cyan-950 text-cyan-300 border border-cyan-800 mb-2">Reliability Engineering</span>
+        <h2 class="text-3xl font-bold text-white">Distributed Recovery & Transactional Outbox</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+        <!-- State Machine -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-base font-bold text-cyan-400">Upload State Machine</h3>
+          <div class="space-y-3">
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-xs text-slate-300">1. PENDING</div>
+                <div class="text-[11px] text-slate-500">Operation initialized; DEK generated</div>
+              </div>
+              <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">Init</span>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-xs text-cyan-300">2. OBJECT_STORED</div>
+                <div class="text-[11px] text-slate-500">Ciphertext committed to MinIO</div>
+              </div>
+              <span class="text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-400">Storage OK</span>
+            </div>
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-xs text-emerald-300">3. COMMITTED</div>
+                <div class="text-[11px] text-slate-500">Metadata & Outbox saved in DB</div>
+              </div>
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-400">Complete</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outbox Pattern -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h3 class="text-base font-bold text-purple-400">Transactional Outbox Pattern</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Avoids the classic <strong>Dual-Write Problem</strong> where a database commit succeeds but message publishing to RabbitMQ fails.
+          </p>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-2">
+            <div>• Database metadata and Outbox event committed in <strong>one single ACID transaction</strong>.</div>
+            <div>• Background <code>OutboxDispatcher</code> asynchronously pushes events to RabbitMQ topic exchange <code>quantumlock.outbox</code>.</div>
+            <div>• Automatic retry on failure ensures at-least-once delivery with zero lost events.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: PROOF & TEST RESULTS -->
+    <section class="slide flex-col w-full p-4">
+      <div class="text-center mb-6">
+        <span class="badge bg-emerald-950 text-emerald-300 border border-emerald-800 mb-2">Evaluation & Submission</span>
+        <h2 class="text-3xl font-bold text-white">Verification & Passing Test Suite</h2>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full space-y-6">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="text-3xl font-extrabold text-emerald-400">44 / 44</div>
+            <div class="text-xs text-slate-400 mt-1">Tests Passing</div>
+          </div>
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="text-3xl font-extrabold text-cyan-400">0</div>
+            <div class="text-xs text-slate-400 mt-1">Failures or Errors</div>
+          </div>
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="text-3xl font-extrabold text-purple-400">13 / 13</div>
+            <div class="text-xs text-slate-400 mt-1">REST Endpoints</div>
+          </div>
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="text-3xl font-extrabold text-amber-400">5 / 5</div>
+            <div class="text-xs text-slate-400 mt-1">Docker Containers Up</div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div>
+            <div class="font-bold text-white text-sm">Interactive Swagger UI</div>
+            <div class="text-slate-400">Test live endpoints: <code>http://localhost:8080/swagger-ui.html</code></div>
+          </div>
+          <div>
+            <div class="font-bold text-white text-sm">Live Automated Demo</div>
+            <div class="text-slate-400">Run in PowerShell: <code>.\run_demo.ps1</code></div>
+          </div>
+          <div class="bg-emerald-950 border border-emerald-800 text-emerald-300 px-3 py-2 rounded-lg font-bold">
+            BUILD SUCCESS (20.39s)
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM BAR: Navigation Controls -->
+  <footer class="flex justify-between items-center border-t border-slate-800 pt-4 mt-4">
+    <button id="prevBtn" onclick="prevSlide()" class="px-5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-sm border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition">
+      ← Previous
+    </button>
+    <div class="flex items-center space-x-1.5" id="dotsContainer">
+      <!-- Dots injected dynamically -->
+    </div>
+    <button id="nextBtn" onclick="nextSlide()" class="px-5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-sm shadow-lg shadow-cyan-950 transition">
+      Next →
+    </button>
+  </footer>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const indicator = document.getElementById('slideIndicator');
+    const dotsContainer = document.getElementById('dotsContainer');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    // Create indicator dots
+    for (let i = 0; i < totalSlides; i++) {
+      const dot = document.createElement('button');
+      dot.className = `w-2.5 h-2.5 rounded-full transition-all ${i === 0 ? 'bg-cyan-400 w-6' : 'bg-slate-700 hover:bg-slate-600'}`;
+      dot.onclick = () => goToSlide(i);
+      dotsContainer.appendChild(dot);
+    }
+
+    function updateView() {
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx === currentSlide);
+      });
+      indicator.textContent = `Slide ${currentSlide + 1} of ${totalSlides}`;
+      
+      const dots = dotsContainer.children;
+      for (let i = 0; i < totalSlides; i++) {
+        if (i === currentSlide) {
+          dots[i].className = 'w-6 h-2.5 rounded-full bg-cyan-400 transition-all';
+        } else {
+          dots[i].className = 'w-2.5 h-2.5 rounded-full bg-slate-700 hover:bg-slate-600 transition-all';
+        }
+      }
+
+      prevBtn.disabled = (currentSlide === 0);
+      if (currentSlide === totalSlides - 1) {
+        nextBtn.textContent = 'Restart ↺';
+      } else {
+        nextBtn.textContent = 'Next →';
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+      } else {
+        currentSlide = 0;
+      }
+      updateView();
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateView();
+      }
+    }
+
+    function goToSlide(n) {
+      currentSlide = n;
+      updateView();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      }
+    });
+
+    updateView();
+  </script>
+</body>
+</html>

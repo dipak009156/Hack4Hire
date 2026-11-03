@@ -22,6 +22,11 @@ public record CreateUserRequest(
 
         String department,
 
-        String deviceTrustLevel
-) {}
+        String deviceTrustLevel,
 
+        Integer clearanceLevel
+) {
+    public List<String> roles() {
+        return roles == null || roles.isEmpty() ? List.of("USER") : roles;
+    }
+}

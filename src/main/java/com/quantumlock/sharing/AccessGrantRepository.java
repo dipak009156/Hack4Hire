@@ -24,6 +24,9 @@ public interface AccessGrantRepository extends JpaRepository<AccessGrant, UUID> 
 
     Optional<AccessGrant> findByIdAndTenantId(UUID id, UUID tenantId);
 
+    List<AccessGrant> findAllByDocumentIdAndGranteeIdAndTenantIdOrderByCreatedAtDesc(
+            UUID documentId, UUID granteeId, UUID tenantId);
+
     /** Active grants for a given grantee on a document (not revoked, not expired). */
     @Query("SELECT g FROM AccessGrant g WHERE g.documentId = :documentId " +
            "AND g.granteeId = :granteeId AND g.tenantId = :tenantId " +
@@ -42,4 +45,3 @@ public interface AccessGrantRepository extends JpaRepository<AccessGrant, UUID> 
            "WHERE g.id = :id AND g.remainingDownloads > 0")
     int decrementRemainingDownloads(@Param("id") UUID id);
 }
-

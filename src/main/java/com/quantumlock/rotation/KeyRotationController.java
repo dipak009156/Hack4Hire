@@ -15,6 +15,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -22,11 +24,12 @@ import java.util.UUID;
  *
  * <ul>
  *   <li>{@code POST /api/v1/rotation/start} — Start a new rotation job (Idempotency-Key required, ADMIN only)</li>
+ *   <li>{@code POST /api/v1/keys/rotate} — Convenience rotation endpoint</li>
  *   <li>{@code GET /api/v1/rotation/{id}/status} — Poll job status</li>
  * </ul>
  */
 @RestController
-@RequestMapping("/api/v1/rotation")
+@RequestMapping({"/api/v1/rotation", "/api/v1/keys"})
 @RequiredArgsConstructor
 @Tag(name = "Key Rotation", description = "DEK re-wrapping key rotation jobs")
 public class KeyRotationController {
@@ -78,27 +81,38 @@ public class KeyRotationController {
 
             RotationStatusResponse response = toResponse(job);
             try {
-                idempotencyService.complete(idempResult.operation().getId(),
-                        objectMapper.writeValueAsString(response), 201);
+                String responseBody = objectMapper.writeValueAsString(response);
+                idempotencyService.complete(idempResult.operation().getId(), responseBody, 201);
             } catch (Exception e) {
-                log.warn("Failed to cache rotation response: {}", e.getMessage());
+                log.warn("Failed to serialize rotation response for idempotency cache: {}", e.getMessage());
             }
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
         } catch (Exception e) {
             idempotencyService.fail(idempResult.operation().getId());
             throw e;
         }
     }
 
+    @PostMapping("/rotate")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Rotate KMS key (convenience endpoint)")
+    public ResponseEntity<Map<String, Object>> rotateKeys(
+            @AuthenticationPrincipal AppUserDetails principal) {
+        KeyRotation job = keyRotationService.startRotation(
+                1, 2, principal.getUserId(), principal.getUsername());
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("jobId", job.getId());
+        resp.put("sourceKek", "v" + job.getSourceKekVersion());
+        resp.put("targetKek", "v" + job.getTargetKekVersion());
+        resp.put("status", job.getStatus());
+        resp.put("totalDocuments", job.getTotalDocuments());
+        return ResponseEntity.ok(resp);
+    }
+
     @GetMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get rotation job status",
-               description = "Returns progress of a running or completed rotation job.")
-    public ResponseEntity<RotationStatusResponse> getStatus(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal AppUserDetails principal) {
-
+    @Operation(summary = "Poll rotation job status")
+    public ResponseEntity<RotationStatusResponse> getStatus(@PathVariable UUID id) {
         KeyRotation job = keyRotationService.getStatus(id);
         return ResponseEntity.ok(toResponse(job));
     }
@@ -121,16 +135,17 @@ public class KeyRotationController {
         );
     }
 
-    private RotationStatusResponse toResponse(KeyRotation job) {
+    private RotationStatusResponse toResponse(KeyRotation j) {
         return new RotationStatusResponse(
-                job.getId(),
-                job.getTenantId(),
-                job.getSourceKekVersion(),
-                job.getTargetKekVersion(),
-                job.getStatus(),
-                job.getTotalDocuments(),
-                job.getProcessedDocuments(),
-                job.getErrorMessage()
+                j.getId(),
+                j.getSourceKekVersion(),
+                j.getTargetKekVersion(),
+                j.getStatus(),
+                j.getTotalDocuments(),
+                j.getProcessedDocuments(),
+                j.getErrorMessage(),
+                j.getCreatedAt(),
+                j.getUpdatedAt()
         );
     }
 
@@ -139,5 +154,16 @@ public class KeyRotationController {
             throw new IllegalArgumentException("Idempotency-Key header is required for this operation");
         }
     }
-}
 
+    public record RotationStatusResponse(
+            UUID id,
+            int sourceKekVersion,
+            int targetKekVersion,
+            String status,
+            Long totalDocuments,
+            Long processedDocuments,
+            String errorMessage,
+            java.time.Instant createdAt,
+            java.time.Instant updatedAt
+    ) {}
+}

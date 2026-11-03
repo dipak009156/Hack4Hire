@@ -51,8 +51,13 @@ public class JwtService {
         return builder
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
-                .signWith(signingKey, Jwts.SIG.HS256)
-                .compact();
+                .signWith(signingKey, Jwts.SIG.HS256);
+
+        if (user instanceof AppUserDetails aud && aud.getUserId() != null) {
+            builder.claim("uid", aud.getUserId().toString());
+        }
+
+        return builder.compact();
     }
 
     public Claims validateToken(String token) {

@@ -1,5 +1,6 @@
 package com.quantumlock.document;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 
 import java.time.Instant;
@@ -16,5 +17,9 @@ public record DocumentResponse(
         int currentVersion,
         Instant createdAt,
         Instant updatedAt
-) {}
-
+) {
+    @JsonProperty("documentId")
+    public UUID documentId() {
+        return id;
+    }
+}

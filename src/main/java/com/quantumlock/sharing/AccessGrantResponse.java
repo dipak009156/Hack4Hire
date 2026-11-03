@@ -1,5 +1,7 @@
 package com.quantumlock.sharing;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -20,5 +22,9 @@ public record AccessGrantResponse(
         boolean active,
         Instant revokedAt,
         Instant createdAt
-) {}
-
+) {
+    @JsonProperty("downloadQuota")
+    public Integer downloadQuota() {
+        return maxDownloads;
+    }
+}

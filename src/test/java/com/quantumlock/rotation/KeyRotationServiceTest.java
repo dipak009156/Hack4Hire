@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -41,18 +42,18 @@ class KeyRotationServiceTest {
 
     private KeyRotationService keyRotationService;
 
-    private final UUID tenantId = UUID.randomUUID();
+    private final UUID tenantId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private final UUID actorId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
+        TenantContext.setTenantId(tenantId);
         keyRotationService = new KeyRotationService(
                 keyRotationRepository,
                 documentVersionRepository,
                 kmsService,
                 auditService
         );
-        TenantContext.setTenantId(tenantId);
     }
 
     @AfterEach
@@ -65,16 +66,6 @@ class KeyRotationServiceTest {
     void startRotation_rewrapsVersionsAndCompletes() {
         when(keyRotationRepository.findActiveByTenantId(tenantId)).thenReturn(List.of());
         when(documentVersionRepository.countCommittedVersionsForRotation(tenantId, 1)).thenReturn(1L);
-
-        UUID jobId = UUID.randomUUID();
-        KeyRotation job = KeyRotation.builder()
-                .id(jobId)
-                .tenantId(tenantId)
-                .sourceKekVersion(1)
-                .targetKekVersion(2)
-                .status("PENDING")
-                .totalDocuments(1L)
-                .build();
 
         when(keyRotationRepository.save(any(KeyRotation.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -105,5 +96,43 @@ class KeyRotationServiceTest {
         assertThat(dv.getWrappedDek()).isEqualTo(Base64.getEncoder().encodeToString(newWrapped));
         verify(documentVersionRepository).save(dv);
         verify(auditService).record(eq(tenantId), eq(actorId), eq("admin"), eq("KEY_ROTATION"), any(), eq("ROTATION_COMPLETED"), eq("SUCCESS"), any());
+    }
+
+    @Test
+    @DisplayName("startRotation rejects when an active job already exists for the tenant")
+    void startRotation_rejectsWhenActiveJobExists() {
+        KeyRotation activeJob = KeyRotation.builder()
+                .id(UUID.randomUUID())
+                .tenantId(tenantId)
+                .status("IN_PROGRESS")
+                .build();
+
+        when(keyRotationRepository.findActiveByTenantId(tenantId)).thenReturn(List.of(activeJob));
+
+        assertThatThrownBy(() -> keyRotationService.startRotation(1, 2, actorId, "admin"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("A rotation job is already active");
+    }
+
+    @Test
+    @DisplayName("getRotationStatus returns the status of an existing job")
+    void getRotationStatus_returnsJob() {
+        UUID jobId = UUID.randomUUID();
+        KeyRotation job = KeyRotation.builder()
+                .id(jobId)
+                .tenantId(tenantId)
+                .sourceKekVersion(1)
+                .targetKekVersion(2)
+                .status("COMPLETED")
+                .totalDocuments(10L)
+                .processedDocuments(10L)
+                .build();
+
+        when(keyRotationRepository.findByIdAndTenantId(jobId, tenantId)).thenReturn(Optional.of(job));
+
+        KeyRotation result = keyRotationService.getStatus(jobId);
+
+        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(result.getProcessedDocuments()).isEqualTo(10L);
     }
 }

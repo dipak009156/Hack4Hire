@@ -1,6 +1,7 @@
 package com.quantumlock.search;
 
 import com.quantumlock.auth.AppUserDetails;
+import com.quantumlock.common.TenantContext;
 import com.quantumlock.document.DocumentResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,33 +16,40 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/search")
+@RequestMapping({"/api/v1/search", "/api/v1/documents/search"})
 @RequiredArgsConstructor
-@Tag(name = "Search", description = "Blind-index encrypted search with AND intersection")
+@Tag(name = "Searchable Encryption", description = "Tenant-isolated blind-index encrypted search")
 public class SearchController {
 
     private final SearchService searchService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'AUDITOR')")
-    @Operation(summary = "Search documents by exact keyword tokens (AND intersection)",
-               description = "Queries the blind index via HMAC-SHA256 tokens without exposing search terms to the database.")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Search documents by exact keyword using HMAC blind index",
+               description = "Queries the encrypted blind index using tenant-scoped HMAC-SHA256 tokens.")
     public ResponseEntity<List<DocumentResponse>> search(
             @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "query", required = false) String query,
             @AuthenticationPrincipal AppUserDetails principal) {
 
-        if (q == null || q.isBlank()) {
+        String searchTerm = (q != null && !q.isBlank()) ? q : query;
+        if (searchTerm == null || searchTerm.isBlank()) {
             return ResponseEntity.ok(List.of());
         }
 
-        List<String> tokens = Arrays.stream(q.split("[,\\s]+"))
+        List<String> tokens = Arrays.stream(searchTerm.split("[,\\s]+"))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
 
-        return ResponseEntity.ok(searchService.search(tokens, principal));
+        if (principal != null) {
+            return ResponseEntity.ok(searchService.search(tokens, principal));
+        }
+
+        UUID tenantId = TenantContext.requireTenantId();
+        return ResponseEntity.ok(searchService.search(tenantId, searchTerm));
     }
 }
-

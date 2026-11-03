@@ -23,10 +23,10 @@ import java.util.stream.Collectors;
  *
  * <p>Endpoints:
  * <ul>
- *   <li>{@code POST /api/v1/audit/verify} — verify chain integrity</li>
+ *   <li>{@code POST /api/v1/audit/verify} and {@code GET /api/v1/audit/verify} — verify chain integrity</li>
  *   <li>{@code GET  /api/v1/audit/events} — paginated/filtered event list</li>
  * </ul>
- * Accessible by ADMIN, AUDITOR, USER roles. Scoped strictly to the caller's tenant.
+ * Accessible by ADMIN, AUDITOR, and USER roles. Scoped strictly to the caller's tenant.
  */
 @RestController
 @RequestMapping("/api/v1/audit")
@@ -38,11 +38,23 @@ public class AuditController {
 
     @PostMapping("/verify")
     @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR', 'USER')")
-    @Operation(summary = "Verify audit chain integrity",
+    @Operation(summary = "Verify audit chain integrity (POST)",
             description = "Walks the append-only hash chain from genesis and reports whether it is intact or the first inconsistent event found.")
-    public ResponseEntity<AuditService.VerificationResult> verifyAuditChain(
+    public ResponseEntity<AuditService.VerificationResult> verifyAuditChainPost(
             @AuthenticationPrincipal AppUserDetails principal) {
+        return performVerification();
+    }
 
+    @GetMapping("/verify")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR', 'USER')")
+    @Operation(summary = "Verify audit chain integrity (GET)",
+            description = "Walks the append-only hash chain from genesis and reports whether it is intact or the first inconsistent event found.")
+    public ResponseEntity<AuditService.VerificationResult> verifyAuditChainGet(
+            @AuthenticationPrincipal AppUserDetails principal) {
+        return performVerification();
+    }
+
+    private ResponseEntity<AuditService.VerificationResult> performVerification() {
         UUID tenantId = TenantContext.requireTenantId();
         AuditService.VerificationResult result = auditService.verifyChain(tenantId);
         return ResponseEntity.ok(result);

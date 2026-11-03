@@ -12,7 +12,11 @@ import java.util.UUID;
 @Repository
 public interface BlindIndexRepository extends JpaRepository<BlindIndex, UUID> {
 
+    List<BlindIndex> findByTenantIdAndTokenHmac(UUID tenantId, String tokenHmac);
+
     List<BlindIndex> findAllByTenantIdAndTokenHmac(UUID tenantId, String tokenHmac);
+
+    List<BlindIndex> findByDocumentId(UUID documentId);
 
     @Query("SELECT b.documentId FROM BlindIndex b WHERE b.tenantId = :tenantId AND b.tokenHmac IN :tokenHmacs")
     List<UUID> findDocumentIdsByTenantIdAndTokenHmacIn(
@@ -21,4 +25,3 @@ public interface BlindIndexRepository extends JpaRepository<BlindIndex, UUID> {
 
     void deleteAllByDocumentId(UUID documentId);
 }
-

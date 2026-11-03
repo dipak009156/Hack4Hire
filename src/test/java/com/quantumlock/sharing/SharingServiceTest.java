@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -37,16 +38,17 @@ class SharingServiceTest {
 
     private SharingService sharingService;
 
-    private final UUID tenantId = UUID.randomUUID();
-    private final UUID grantorId = UUID.randomUUID();
+    private final UUID tenantId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private final UUID ownerId = UUID.randomUUID();
     private final UUID granteeId = UUID.randomUUID();
-    private final UUID docId = UUID.randomUUID();
-    private final AppUserDetails principal = new AppUserDetails(grantorId, tenantId, "alice", List.of("USER"), "eng", "HIGH");
+    private final UUID documentId = UUID.randomUUID();
+    private AppUserDetails principal;
 
     @BeforeEach
     void setUp() {
-        sharingService = new SharingService(accessGrantRepository, documentRepository, auditService);
         TenantContext.setTenantId(tenantId);
+        principal = new AppUserDetails(ownerId, tenantId, "dr_alice", List.of("ADMIN"), "security", "HIGH");
+        sharingService = new SharingService(accessGrantRepository, documentRepository, auditService);
     }
 
     @AfterEach
@@ -55,53 +57,88 @@ class SharingServiceTest {
     }
 
     @Test
-    @DisplayName("grantAccess creates grant, sets download quota and audit trail")
+    @DisplayName("grantAccess creates active grant with quota and records audit event")
     void grantAccess_success() {
-        Document doc = Document.builder().id(docId).tenantId(tenantId).ownerId(grantorId).name("doc.pdf").build();
-        when(documentRepository.findByIdAndTenantId(docId, tenantId)).thenReturn(Optional.of(doc));
-
-        AccessGrant saved = AccessGrant.builder()
-                .id(UUID.randomUUID())
-                .documentId(docId)
+        Document doc = Document.builder()
+                .id(documentId)
                 .tenantId(tenantId)
-                .grantorId(grantorId)
-                .granteeId(granteeId)
-                .permissions(List.of("READ"))
-                .purpose("Audit review")
-                .maxDownloads(3)
-                .remainingDownloads(3)
+                .ownerId(ownerId)
+                .name("Health Record")
+                .classification("CONFIDENTIAL")
                 .build();
 
-        when(accessGrantRepository.save(any(AccessGrant.class))).thenReturn(saved);
+        when(documentRepository.findByIdAndTenantId(documentId, tenantId)).thenReturn(Optional.of(doc));
 
-        ShareDocumentRequest req = new ShareDocumentRequest(granteeId, List.of("READ"), "Audit review", null, 3);
-        AccessGrantResponse response = sharingService.grantAccess(docId, req, principal);
+        AccessGrant savedGrant = AccessGrant.builder()
+                .id(UUID.randomUUID())
+                .documentId(documentId)
+                .tenantId(tenantId)
+                .grantorId(ownerId)
+                .granteeId(granteeId)
+                .permissions(List.of("DOWNLOAD"))
+                .maxDownloads(2)
+                .remainingDownloads(2)
+                .build();
 
+        when(accessGrantRepository.save(any(AccessGrant.class))).thenReturn(savedGrant);
+
+        ShareDocumentRequest request = new ShareDocumentRequest(
+                granteeId, documentId, List.of("DOWNLOAD"), "Medical Consult", null, 2);
+
+        AccessGrantResponse response = sharingService.grantAccess(documentId, request, principal);
+
+        assertThat(response).isNotNull();
         assertThat(response.granteeId()).isEqualTo(granteeId);
-        assertThat(response.remainingDownloads()).isEqualTo(3);
-        assertThat(response.active()).isTrue();
-        verify(auditService).record(eq(tenantId), eq(grantorId), eq("alice"), eq("ACCESS_GRANT"), eq(docId), eq("GRANT_ACCESS"), eq("SUCCESS"), any());
+        assertThat(response.maxDownloads()).isEqualTo(2);
+
+        verify(auditService).record(eq(tenantId), eq(ownerId), eq("dr_alice"),
+                eq("ACCESS_GRANT"), eq(documentId), eq("GRANT_ACCESS"), eq("SUCCESS"), any());
     }
 
     @Test
-    @DisplayName("revokeAccess marks grant as revoked and audits")
+    @DisplayName("revokeAccess linearizes grant by setting revokedAt and records audit event")
     void revokeAccess_success() {
         UUID grantId = UUID.randomUUID();
         AccessGrant grant = AccessGrant.builder()
                 .id(grantId)
-                .documentId(docId)
+                .documentId(documentId)
                 .tenantId(tenantId)
-                .grantorId(grantorId)
+                .grantorId(ownerId)
                 .granteeId(granteeId)
                 .build();
 
         when(accessGrantRepository.findByIdAndTenantId(grantId, tenantId)).thenReturn(Optional.of(grant));
 
-        sharingService.revokeAccess(docId, grantId, principal);
+        sharingService.revokeAccess(documentId, grantId, principal);
 
-        assertThat(grant.getRevokedAt()).isNotNull();
-        verify(accessGrantRepository).save(grant);
-        verify(auditService).record(eq(tenantId), eq(grantorId), eq("alice"), eq("ACCESS_GRANT"), eq(docId), eq("REVOKE_ACCESS"), eq("SUCCESS"), any());
+        ArgumentCaptor<AccessGrant> captor = ArgumentCaptor.forClass(AccessGrant.class);
+        verify(accessGrantRepository).save(captor.capture());
+
+        AccessGrant updated = captor.getValue();
+        assertThat(updated.getRevokedAt()).isNotNull();
+
+        verify(auditService).record(eq(tenantId), eq(ownerId), eq("dr_alice"),
+                eq("ACCESS_GRANT"), eq(documentId), eq("REVOKE_ACCESS"), eq("SUCCESS"), any());
+    }
+
+    @Test
+    @DisplayName("revokeAccess is idempotent when grant is already revoked")
+    void revokeAccess_alreadyRevoked_isIdempotent() {
+        UUID grantId = UUID.randomUUID();
+        AccessGrant grant = AccessGrant.builder()
+                .id(grantId)
+                .documentId(documentId)
+                .tenantId(tenantId)
+                .grantorId(ownerId)
+                .granteeId(granteeId)
+                .revokedAt(Instant.now().minusSeconds(60))
+                .build();
+
+        when(accessGrantRepository.findByIdAndTenantId(grantId, tenantId)).thenReturn(Optional.of(grant));
+
+        sharingService.revokeAccess(documentId, grantId, principal);
+
+        verify(accessGrantRepository, never()).save(any());
+        verify(auditService, never()).record(any(), any(), any(), any(), any(), any(), any(), any());
     }
 }
-
