@@ -20,6 +20,8 @@ import { Recovery } from './pages/Recovery';
 import { Cipherstorm } from './pages/Cipherstorm';
 import { SecurityProof } from './pages/SecurityProof';
 import { UserManagement } from './pages/UserManagement';
+import { RequestCredentials } from './pages/RequestCredentials';
+import { ReviewRequest } from './pages/ReviewRequest';
 
 // ─── Error Boundary ────────────────────────────────────────────────────────────
 
@@ -157,6 +159,7 @@ export const App: React.FC = () => {
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/request-credentials" element={<RequestCredentials />} />
 
                 <Route
                   path="/"
@@ -167,7 +170,7 @@ export const App: React.FC = () => {
                   }
                 >
                   <Route index element={
-                    <ProtectedRoute requiredAnyRole={['ADMIN', 'USER']}>
+                    <ProtectedRoute requiredAnyRole={['ADMIN', 'USER', 'SUPER_ADMIN']}>
                       <Dashboard />
                     </ProtectedRoute>
                   } />
@@ -207,6 +210,22 @@ export const App: React.FC = () => {
                     element={
                       <ProtectedRoute requiredRole="ADMIN">
                         <UserManagement />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="review-request"
+                    element={
+                      <ProtectedRoute requiredRole="SUPER_ADMIN">
+                        <ReviewRequest />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="review-request/:id"
+                    element={
+                      <ProtectedRoute requiredRole="SUPER_ADMIN">
+                        <ReviewRequest />
                       </ProtectedRoute>
                     }
                   />

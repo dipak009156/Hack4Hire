@@ -28,10 +28,31 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+  mail:
+    # To use Brevo (free 300 emails/day): set SMTP_HOST=smtp-relay.brevo.com, SMTP_USER=<your-brevo-email>, SMTP_PASS=<brevo-smtp-key>
+    # To use Gmail: set SMTP_HOST=smtp.gmail.com, SMTP_USER=<gmail>, SMTP_PASS=<16-char-app-password>
+    host: ${SMTP_HOST:${SPRING_MAIL_HOST:smtp-relay.brevo.com}}
+    port: ${SMTP_PORT:${SPRING_MAIL_PORT:587}}
+    username: ${SMTP_USER:${SPRING_MAIL_USERNAME:${PlatformMail:${PLATFORM_MAIL:chavandipak0606@gmail.com}}}}
+    password: ${SMTP_PASS:${SPRING_MAIL_PASSWORD:${PlatformMailPassword:${PLATFORM_MAIL_PASSWORD:}}}}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+platform:
+  mail: ${PlatformMail:${PLATFORM_MAIL:chavandipak0606@gmail.com}}
+  base-url: ${PLATFORM_BASE_URL:http://localhost:5173}
 
 jwt:
-  secret: a-very-long-dev-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256
-  expiration-ms: 3600000
+  secret: ${JWT_SECRET:a-very-long-dev-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
@@ -82,6 +103,11 @@ resilience4j:
       broker:
         max-attempts: 3
         wait-duration: 500ms
+
+management:
+  health:
+    mail:
+      enabled: false
 
 outbox:
   relay-interval-ms: 5000

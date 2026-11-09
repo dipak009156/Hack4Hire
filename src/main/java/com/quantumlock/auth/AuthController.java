@@ -30,6 +30,14 @@ public class AuthController {
     private final JwtProperties jwtProperties;
     private final TenantRepository tenantRepository;
     private final AppUserRepository userRepository;
+    private final com.quantumlock.request.CredentialRequestService credentialRequestService;
+
+    @GetMapping("/check-tenant")
+    @Operation(summary = "Check if tenant name is available or duplicate", description = "Validates against registered tenants and pending requests.")
+    public ResponseEntity<Map<String, Object>> checkTenantAvailability(
+            @RequestParam(name = "name", required = false) String name) {
+        return ResponseEntity.ok(credentialRequestService.checkTenantAvailability(name));
+    }
 
     @PostMapping("/login")
     @Operation(summary = "Authenticate user within a tenant and issue JWT")

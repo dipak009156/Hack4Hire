@@ -120,6 +120,18 @@ public class ProblemDetailsExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ProblemDetail> handleResponseStatusException(org.springframework.web.server.ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
+        String reason = ex.getReason() != null ? ex.getReason() : status.getReasonPhrase();
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, reason);
+        problem.setTitle(status.getReasonPhrase());
+        problem.setType(URI.create("urn:problem:" + status.name().toLowerCase().replace('_', '-')));
+        problem.setProperty("timestamp", Instant.now());
+        return ResponseEntity.status(status).body(problem);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleGenericException(Exception ex) {
         log.error("Unhandled internal server error occurred", ex);

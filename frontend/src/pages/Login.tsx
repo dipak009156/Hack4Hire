@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest, ApiError } from '../api/client';
 import { LoginResponse } from '../api/types';
-import { Shield, Lock, User, Building, AlertCircle, ArrowRight } from 'lucide-react';
+import { Shield, Lock, User, Building, AlertCircle, ArrowRight, UserPlus } from 'lucide-react';
 import { Button } from '../components/common/Button';
 
 interface DemoUser {
@@ -25,6 +25,7 @@ const DEMO_USERS: DemoUser[] = [
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
 
   const [tenant, setTenant] = useState('tenant-alpha');
@@ -32,6 +33,13 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('password123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = searchParams.get('tenant');
+    const u = searchParams.get('username');
+    if (t) setTenant(t);
+    if (u) setUsername(u);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,9 +58,10 @@ export const Login: React.FC = () => {
       });
 
       login(res);
-      // Redirect auditors directly to their only page
       const payload = res.roles ?? [];
-      if (payload.includes('AUDITOR') && !payload.includes('ADMIN')) {
+      if (payload.includes('SUPER_ADMIN')) {
+        navigate('/review-request');
+      } else if (payload.includes('AUDITOR') && !payload.includes('ADMIN')) {
         navigate('/audit-log');
       } else {
         navigate('/');
@@ -255,7 +264,21 @@ export const Login: React.FC = () => {
           </Button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-sand text-xs text-brown/60 text-center">
+        {/* Request Credentials Action Card */}
+        <div className="mt-6 pt-5 border-t border-sand space-y-3">
+          <div className="text-center text-xs text-brown/70 font-medium">
+            Need your own isolated organization workspace?
+          </div>
+          <Link
+            to="/request-credentials"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-terracotta/40 bg-terracotta/5 hover:bg-terracotta/10 text-terracotta font-semibold text-xs transition-colors shadow-sm"
+          >
+            <UserPlus className="w-4 h-4" />
+            Request Credentials & Dedicated Tenant
+          </Link>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-sand text-xs text-brown/50 text-center font-mono">
           In-memory security: Refreshing the browser terminates the session immediately.
         </div>
       </div>

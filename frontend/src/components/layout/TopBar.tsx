@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, ShieldAlert, LogOut, Menu, Building2, UserCircle2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, LogOut, Menu, Building2, UserCircle2, Mail } from 'lucide-react';
 import { Button } from '../common/Button';
 import { getLastCorrelationId, onCorrelationIdChange } from '../../api/client';
+import { EmailInboxModal } from '../common/EmailInboxModal';
 import { useNavigate } from 'react-router-dom';
 
 interface TopBarProps {
@@ -13,6 +14,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
   const [correlationId, setCorrelationId] = useState<string | null>(() => getLastCorrelationId());
+  const [isInboxOpen, setIsInboxOpen] = useState(false);
 
   useEffect(() => {
     // Subscribe to correlation ID updates from API responses
@@ -62,6 +64,16 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Notifications Button */}
+        <button
+          onClick={() => setIsInboxOpen(true)}
+          className="p-2 text-brown/70 hover:text-terracotta hover:bg-sand/30 rounded-lg transition-colors relative"
+          title="Dispatched Notifications Log"
+          aria-label="Mail Notifications"
+        >
+          <Mail className="w-4 h-4" />
+        </button>
+
         {/* Device Trust Indicator */}
         <div
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
@@ -111,6 +123,11 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
           <span className="hidden sm:inline">Logout</span>
         </Button>
       </div>
+
+      <EmailInboxModal
+        isOpen={isInboxOpen}
+        onClose={() => setIsInboxOpen(false)}
+      />
     </header>
   );
 };

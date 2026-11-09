@@ -196,3 +196,54 @@ export interface SecurityProofItem {
   result?: string;
 }
 
+export interface CredentialRequestResponse {
+  id: string;
+  fullName: string;
+  email: string;
+  username: string;
+  tenantName: string;
+  department?: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
+
+export interface CreateCredentialRequestDto {
+  fullName: string;
+  email: string;
+  username: string;
+  tenantName: string;
+  department?: string;
+  reason: string;
+}
+
+export interface ReviewCredentialRequestDto {
+  action: 'APPROVE' | 'REJECT';
+  rejectionReason?: string;
+  temporaryPassword?: string;
+}
+
+export interface EmailNotificationResponse {
+  id: string;
+  recipientEmail: string;
+  recipientName: string;
+  subject: string;
+  bodyHtml: string;
+  emailType: string;
+  requestId?: string;
+  isRead: boolean;
+  sentAt: string;
+}
+
+export interface TenantCheckResponse {
+  name: string;
+  available: boolean;
+  exists: boolean;
+  pending?: boolean;
+  message: string;
+}
+
+

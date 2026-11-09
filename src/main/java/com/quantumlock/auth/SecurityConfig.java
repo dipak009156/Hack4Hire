@@ -30,7 +30,7 @@ import java.time.Instant;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -41,11 +41,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/**",
+                                "/api/v1/credential-requests/emails/**",
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/credential-requests").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/credential-requests/*").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
@@ -57,7 +60,7 @@ public class SecurityConfig {
                             );
                             problem.setTitle("Unauthorized");
                             problem.setType(URI.create("urn:problem:unauthorized"));
-                            problem.setProperty("timestamp", Instant.now());
+                            problem.setProperty("timestamp", Instant.now().toString());
                             response.getWriter().write(objectMapper.writeValueAsString(problem));
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
@@ -68,7 +71,7 @@ public class SecurityConfig {
                             );
                             problem.setTitle("Forbidden");
                             problem.setType(URI.create("urn:problem:forbidden"));
-                            problem.setProperty("timestamp", Instant.now());
+                            problem.setProperty("timestamp", Instant.now().toString());
                             response.getWriter().write(objectMapper.writeValueAsString(problem));
                         })
                 )

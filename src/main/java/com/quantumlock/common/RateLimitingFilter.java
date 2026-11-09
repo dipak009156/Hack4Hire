@@ -24,12 +24,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class RateLimitingFilter extends OncePerRequestFilter {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
     // Map IP+endpoint -> RequestTracker
     private final ConcurrentHashMap<String, RequestCounter> requestCounts = new ConcurrentHashMap<>();
 
-    private static final int LOGIN_LIMIT_PER_MINUTE = 5;
+    private static final int LOGIN_LIMIT_PER_MINUTE = 30;
     private static final int GENERAL_LIMIT_PER_MINUTE = 120;
     private static final int WINDOW_SECONDS = 60;
 
@@ -76,7 +76,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             );
             problem.setTitle("Too Many Requests");
             problem.setType(URI.create("urn:problem:too-many-requests"));
-            problem.setProperty("timestamp", Instant.now());
+            problem.setProperty("timestamp", Instant.now().toString());
             problem.setProperty("retryAfterSeconds", WINDOW_SECONDS);
 
             response.getWriter().write(objectMapper.writeValueAsString(problem));

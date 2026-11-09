@@ -17,6 +17,7 @@ import {
   Building2,
   UserCircle2,
   Users,
+  UserCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,22 +26,24 @@ interface SidebarProps {
 
 // Role colour map
 const ROLE_COLOURS: Record<string, string> = {
-  ADMIN:   'bg-terracotta text-cream',
-  USER:    'bg-olive/80 text-cream',
-  AUDITOR: 'bg-amber/80 text-espresso',
+  SUPER_ADMIN: 'bg-purple-700 text-cream',
+  ADMIN:       'bg-terracotta text-cream',
+  USER:        'bg-olive/80 text-cream',
+  AUDITOR:     'bg-amber/80 text-espresso',
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
   const { hasRole, hasAnyRole, session } = useAuth();
 
-  const isAdmin   = hasRole('ADMIN');
-  const isUser    = hasRole('USER');
-  const isAuditor = hasRole('AUDITOR');
+  const isAdmin      = hasRole('ADMIN');
+  const isSuperAdmin = hasRole('SUPER_ADMIN');
+  const isUser       = hasRole('USER');
+  const isAuditor    = hasRole('AUDITOR');
 
   // Each nav item has a `show` predicate — derived strictly from role
   const navItems = [
     // ADMIN + USER pages
-    { to: '/',               label: 'Dashboard',         icon: LayoutDashboard, show: isAdmin || isUser },
+    { to: '/',               label: 'Dashboard',         icon: LayoutDashboard, show: isAdmin || isUser || isSuperAdmin },
     { to: '/documents',      label: 'Documents',         icon: FileText,        show: isAdmin || isUser },
     { to: '/search',         label: 'Search',            icon: Search,          show: isAdmin || isUser },
     { to: '/sharing',        label: 'Sharing',           icon: Share2,          show: isAdmin || isUser },
@@ -48,6 +51,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
     { to: '/key-management', label: 'Key Management',    icon: KeyRound,        show: isAdmin },
     { to: '/policies',       label: 'Policies',          icon: FileCode2,       show: isAdmin },
     { to: '/users',          label: 'User Management',   icon: Users,           show: isAdmin },
+    // SUPER_ADMIN-only: credential request review (platform level)
+    { to: '/review-request', label: 'Access Requests',   icon: UserCheck,       show: isSuperAdmin },
     // ADMIN + AUDITOR pages
     { to: '/audit-log',      label: 'Audit Log',         icon: ScrollText,      show: isAdmin || isAuditor },
     // ADMIN-only pages (continued)
@@ -68,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
     },
     {
       label: 'Administration',
-      items: navItems.filter(n => ['/key-management', '/policies', '/users', '/recovery', '/cipherstorm'].includes(n.to)),
+      items: navItems.filter(n => ['/key-management', '/policies', '/users', '/review-request', '/recovery', '/cipherstorm'].includes(n.to)),
     },
     {
       label: 'Compliance',

@@ -13,6 +13,8 @@ import java.util.UUID;
 @Repository
 public interface TenantRepository extends JpaRepository<Tenant, UUID> {
     Optional<Tenant> findByName(String name);
+    Optional<Tenant> findByNameIgnoreCase(String name);
+    boolean existsByNameIgnoreCase(String name);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM Tenant t WHERE t.id = :id")
