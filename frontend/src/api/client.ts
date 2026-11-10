@@ -68,9 +68,12 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
   headers.delete('X-Tenant-ID');
   headers.delete('X-Tenant');
 
-  const url = endpoint.startsWith('http') || endpoint.startsWith('/api') 
-    ? endpoint 
-    : `/api/v1${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  const url = endpoint.startsWith('http')
+    ? endpoint
+    : endpoint.startsWith('/api')
+      ? `${apiBase}${endpoint}`
+      : `${apiBase}/api/v1${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
   const response = await fetch(url, {
     ...options,
